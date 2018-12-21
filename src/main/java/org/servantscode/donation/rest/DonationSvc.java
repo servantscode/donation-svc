@@ -9,13 +9,18 @@ import org.servantscode.donation.db.PledgeDB;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 @Path("/donation")
 public class DonationSvc {
     private static final Logger LOG = LogManager.getLogger(DonationSvc.class);
 
-    @GET @Path("/family/{familyId}") @Produces(MediaType.APPLICATION_JSON)
+    @GET @Path("/family/{familyId}") @Produces(APPLICATION_JSON)
     public List<Donation> getDonations(@PathParam("familyId") int familyId) {
         try {
             return new DonationDB().getFamilyDonations(familyId);
@@ -25,8 +30,8 @@ public class DonationSvc {
         }
     }
 
-    @POST @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON)
-    public Donation createDonation( Donation donation) {
+    @POST @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
+    public Donation createDonation(Donation donation) {
         try {
             return new DonationDB().createDonation(donation);
         } catch(Throwable t) {
@@ -35,7 +40,21 @@ public class DonationSvc {
         }
     }
 
-    @PUT @Path("/{donationId}") @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON)
+    @POST @Path("/batch") @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
+    public List<Donation> createDonations(List<Donation> donations) {
+        try {
+            List<Donation> createdDonations = new ArrayList<>(donations.size());
+            DonationDB db = new DonationDB();
+            for(Donation donation: donations)
+                createdDonations.add(db.createDonation(donation));
+            return createdDonations;
+        } catch(Throwable t) {
+            LOG.error("Batch donation creation failed!!", t);
+            throw t;
+        }
+    }
+
+    @PUT @Path("/{donationId}") @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public Donation updateDonation(@PathParam("donationId") int donationId,
                                   Donation donation) {
         try {
@@ -58,5 +77,12 @@ public class DonationSvc {
             LOG.error("Failed to delete donation: " + donationId, t);
             throw t;
         }
+    }
+
+    @GET @Path("/types") @Produces(APPLICATION_JSON)
+    public List<String> getDonationTypes() {
+        return  Stream.of(Donation.DonationType.values())
+                .map(Enum::name)
+                .collect(Collectors.toList());
     }
 }
