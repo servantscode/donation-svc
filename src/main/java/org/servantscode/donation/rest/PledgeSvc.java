@@ -3,18 +3,24 @@ package org.servantscode.donation.rest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.omg.CosNaming.NamingContextPackage.NotFound;
+import org.servantscode.commons.EnumUtils;
 import org.servantscode.donation.Pledge;
 import org.servantscode.donation.db.PledgeDB;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 @Path("/pledge")
 public class PledgeSvc {
     private static final Logger LOG = LogManager.getLogger(PledgeSvc.class);
 
-    @GET @Path("/family/{familyId}") @Produces(MediaType.APPLICATION_JSON)
+    @GET @Path("/family/{familyId}") @Produces(APPLICATION_JSON)
     public Pledge getFamilyPledges(@PathParam("familyId") int familyId) {
         try {
             return new PledgeDB().getActivePledge(familyId);
@@ -24,7 +30,7 @@ public class PledgeSvc {
         }
     }
 
-    @GET @Path("/family/{familyId}/history") @Produces(MediaType.APPLICATION_JSON)
+    @GET @Path("/family/{familyId}/history") @Produces(APPLICATION_JSON)
     public List<Pledge> getFamilyPledgeHistory(@PathParam("familyId") int familyId) {
         try {
             return new PledgeDB().getFamilyPledges(familyId);
@@ -34,7 +40,7 @@ public class PledgeSvc {
         }
     }
 
-    @POST @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON)
+    @POST @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public Pledge createPledge(Pledge pledge) {
         try {
             return new PledgeDB().createPledge(pledge);
@@ -44,7 +50,7 @@ public class PledgeSvc {
         }
     }
 
-    @PUT @Path("/{pledgeId}") @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON)
+    @PUT @Path("/{pledgeId}") @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public Pledge updatePledge(@PathParam("pledgeId") int pledgeId,
                                   Pledge pledge) {
         try {
@@ -61,7 +67,7 @@ public class PledgeSvc {
         }
     }
 
-    @DELETE @Path("/{pledgeId}") @Produces(MediaType.APPLICATION_JSON)
+    @DELETE @Path("/{pledgeId}") @Produces(APPLICATION_JSON)
     public void deletePledge(@PathParam("pledgeId") int pledgeId) {
         try {
             if(!new PledgeDB().deletePledge(pledgeId))
@@ -70,5 +76,15 @@ public class PledgeSvc {
             LOG.error("Failed to delete pledge: " + pledgeId, t);
             throw t;
         }
+    }
+
+    @GET @Path("/types") @Produces(APPLICATION_JSON)
+    public List<String> getPledgeTypes() {
+        return EnumUtils.listValues(Pledge.PledgeType.class);
+    }
+
+    @GET @Path("/freqs") @Produces(APPLICATION_JSON)
+    public List<String> getPledgeFrequencies() {
+        return EnumUtils.listValues(Pledge.PledgeFrequency.class);
     }
 }

@@ -1,5 +1,7 @@
 package org.servantscode.donation;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import java.util.Date;
 
 public class Pledge {
@@ -10,12 +12,16 @@ public class Pledge {
     private int familyId;
     private PledgeType pledgeType;
     private int envelopeNumber;
-    private Date pledgeDate;
-    private Date pledgeStart;
-    private Date pledgeEnd;
     private PledgeFrequency pledgeFrequency;
     private float pledgeAmount;
     private float annualPledgeAmount;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private Date pledgeDate;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private Date pledgeStart;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private Date pledgeEnd;
 
     // ----- Accessors -----
     public int getId() { return id; }

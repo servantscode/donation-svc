@@ -2,6 +2,7 @@ package org.servantscode.donation.rest;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.servantscode.commons.EnumUtils;
 import org.servantscode.donation.Donation;
 import org.servantscode.donation.Pledge;
 import org.servantscode.donation.db.DonationDB;
@@ -81,8 +82,6 @@ public class DonationSvc {
 
     @GET @Path("/types") @Produces(APPLICATION_JSON)
     public List<String> getDonationTypes() {
-        return  Stream.of(Donation.DonationType.values())
-                .map(Enum::name)
-                .collect(Collectors.toList());
+        return EnumUtils.listValues(Donation.DonationType.class);
     }
 }

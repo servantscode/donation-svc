@@ -1,5 +1,7 @@
 package org.servantscode.donation;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import java.util.Date;
 
 public class Donation {
@@ -8,6 +10,8 @@ public class Donation {
     private long id;
     private int familyId;
     private float amount;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private Date donationDate;
     private DonationType donationType;
     private int checkNumber;
