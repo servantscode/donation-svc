@@ -24,6 +24,23 @@ public class DonationDB extends DBAccess {
         }
     }
 
+    public Donation getLastDonation(int familyId) {
+        String sql = "SELECT * FROM donations WHERE family_id=? ORDER BY date DESC LIMIT 1";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)
+        ) {
+            stmt.setInt(1, familyId);
+
+            List<Donation> donations = processDonationResults(stmt);
+            if(donations.isEmpty())
+                return null;
+
+            return donations.get(0);
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not retrieve donations for family: " + familyId, e);
+        }
+    }
+
     public Donation createDonation(Donation donation) {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(
