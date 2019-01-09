@@ -1,9 +1,12 @@
-version: '3'
+version: '2.4'
 services:
   donation-svc-svc:
     image: "servantscode/donation-svc:latest"
     ports:
      - "83:8080"
+    mem_limit: 128m
+    environment:
+      ES_JAVA_OPTS: "-Xmx128m -Xms128m"
      
 networks:
   default:
