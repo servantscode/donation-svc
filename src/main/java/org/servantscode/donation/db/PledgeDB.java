@@ -68,9 +68,9 @@ public class PledgeDB extends DBAccess {
             stmt.setInt(1, pledge.getFamilyId());
             stmt.setString(2, pledge.getPledgeType().toString());
             stmt.setInt(3, pledge.getEnvelopeNumber());
-            stmt.setDate(4, convert(pledge.getPledgeDate()));
-            stmt.setDate(5, convert(pledge.getPledgeStart()));
-            stmt.setDate(6, convert(pledge.getPledgeEnd()));
+            stmt.setTimestamp(4, convert(pledge.getPledgeDate()));
+            stmt.setTimestamp(5, convert(pledge.getPledgeStart()));
+            stmt.setTimestamp(6, convert(pledge.getPledgeEnd()));
             stmt.setString(7, pledge.getPledgeFrequency().toString());
             stmt.setFloat(8, pledge.getPledgeAmount());
             stmt.setFloat(9, pledge.getAnnualPledgeAmount());
@@ -99,9 +99,9 @@ public class PledgeDB extends DBAccess {
             stmt.setInt(1, pledge.getFamilyId());
             stmt.setString(2, pledge.getPledgeType().toString());
             stmt.setInt(3, pledge.getEnvelopeNumber());
-            stmt.setDate(4, convert(pledge.getPledgeDate()));
-            stmt.setDate(5, convert(pledge.getPledgeStart()));
-            stmt.setDate(6, convert(pledge.getPledgeEnd()));
+            stmt.setTimestamp(4, convert(pledge.getPledgeDate()));
+            stmt.setTimestamp(5, convert(pledge.getPledgeStart()));
+            stmt.setTimestamp(6, convert(pledge.getPledgeEnd()));
             stmt.setString(7, pledge.getPledgeFrequency().toString());
             stmt.setFloat(8, pledge.getPledgeAmount());
             stmt.setFloat(9, pledge.getAnnualPledgeAmount());
@@ -154,9 +154,9 @@ public class PledgeDB extends DBAccess {
                 pledge.setFamilyId(rs.getInt("family_id"));
                 pledge.setPledgeType(rs.getString("pledge_type"));
                 pledge.setEnvelopeNumber(rs.getInt("envelope_number"));
-                pledge.setPledgeDate(rs.getTimestamp("pledge_date"));
-                pledge.setPledgeStart(rs.getTimestamp("pledge_start"));
-                pledge.setPledgeEnd(rs.getTimestamp("pledge_end"));
+                pledge.setPledgeDate(convert(rs.getTimestamp("pledge_date")));
+                pledge.setPledgeStart(convert(rs.getTimestamp("pledge_start")));
+                pledge.setPledgeEnd(convert(rs.getTimestamp("pledge_end")));
                 pledge.setPledgeFrequency(rs.getString("frequency"));
                 pledge.setPledgeAmount(rs.getFloat("pledge_increment"));
                 pledge.setAnnualPledgeAmount(rs.getFloat("total_pledge"));

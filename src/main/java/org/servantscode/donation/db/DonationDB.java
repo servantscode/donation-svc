@@ -50,7 +50,7 @@ public class DonationDB extends DBAccess {
         ) {
             stmt.setInt(1, donation.getFamilyId());
             stmt.setFloat(2, donation.getAmount());
-            stmt.setDate(3, convert(donation.getDonationDate()));
+            stmt.setTimestamp(3, convert(donation.getDonationDate()));
             stmt.setString(4, donation.getDonationType().toString());
             stmt.setInt(5, donation.getCheckNumber());
             stmt.setLong(6, donation.getTransactionId());
@@ -78,7 +78,7 @@ public class DonationDB extends DBAccess {
         ) {
             stmt.setInt(1, donation.getFamilyId());
             stmt.setFloat(2, donation.getAmount());
-            stmt.setDate(3, convert(donation.getDonationDate()));
+            stmt.setTimestamp(3, convert(donation.getDonationDate()));
             stmt.setString(4, donation.getDonationType().toString());
             stmt.setInt(5, donation.getCheckNumber());
             stmt.setLong(6, donation.getTransactionId());
@@ -112,7 +112,7 @@ public class DonationDB extends DBAccess {
                 donation.setId(rs.getLong("id"));
                 donation.setFamilyId(rs.getInt("family_id"));
                 donation.setAmount(rs.getFloat("amount"));
-                donation.setDonationDate(rs.getTimestamp("date"));
+                donation.setDonationDate(convert(rs.getTimestamp("date")));
                 donation.setDonationType(rs.getString("type"));
                 donation.setCheckNumber(rs.getInt("check_number"));
                 donation.setTransactionId(rs.getLong("transaction_id"));

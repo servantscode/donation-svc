@@ -1,8 +1,6 @@
 package org.servantscode.donation;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-
-import java.util.Date;
+import java.time.ZonedDateTime;
 
 public class Donation {
     public enum DonationType {CASH, CHECK, EGIFT, CREDIT_CARD}
@@ -11,8 +9,7 @@ public class Donation {
     private int familyId;
     private float amount;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    private Date donationDate;
+    private ZonedDateTime donationDate;
     private DonationType donationType;
     private int checkNumber;
     private long transactionId;
@@ -27,8 +24,8 @@ public class Donation {
     public float getAmount() { return amount; }
     public void setAmount(float amount) { this.amount = amount; }
 
-    public Date getDonationDate() { return donationDate; }
-    public void setDonationDate(Date donationDate) { this.donationDate = donationDate; }
+    public ZonedDateTime getDonationDate() { return donationDate; }
+    public void setDonationDate(ZonedDateTime donationDate) { this.donationDate = donationDate; }
 
     public DonationType getDonationType() { return donationType; }
     public void setDonationType(DonationType donationType) { this.donationType = donationType; }

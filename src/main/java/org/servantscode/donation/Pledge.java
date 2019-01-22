@@ -1,8 +1,6 @@
 package org.servantscode.donation;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-
-import java.util.Date;
+import java.time.ZonedDateTime;
 
 public class Pledge {
     public enum PledgeType {EGIFT, BASKET};
@@ -16,12 +14,9 @@ public class Pledge {
     private float pledgeAmount;
     private float annualPledgeAmount;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    private Date pledgeDate;
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    private Date pledgeStart;
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    private Date pledgeEnd;
+    private ZonedDateTime pledgeDate;
+    private ZonedDateTime pledgeStart;
+    private ZonedDateTime pledgeEnd;
 
     // ----- Accessors -----
     public int getId() { return id; }
@@ -37,14 +32,14 @@ public class Pledge {
     public int getEnvelopeNumber() { return envelopeNumber; }
     public void setEnvelopeNumber(int envelopeNumber) { this.envelopeNumber = envelopeNumber; }
 
-    public Date getPledgeDate() { return pledgeDate; }
-    public void setPledgeDate(Date pledgeDate) { this.pledgeDate = pledgeDate; }
+    public ZonedDateTime getPledgeDate() { return pledgeDate; }
+    public void setPledgeDate(ZonedDateTime pledgeDate) { this.pledgeDate = pledgeDate; }
 
-    public Date getPledgeStart() { return pledgeStart; }
-    public void setPledgeStart(Date pledgeStart) { this.pledgeStart = pledgeStart; }
+    public ZonedDateTime getPledgeStart() { return pledgeStart; }
+    public void setPledgeStart(ZonedDateTime pledgeStart) { this.pledgeStart = pledgeStart; }
 
-    public Date getPledgeEnd() { return pledgeEnd; }
-    public void setPledgeEnd(Date pledgeEnd) { this.pledgeEnd = pledgeEnd; }
+    public ZonedDateTime getPledgeEnd() { return pledgeEnd; }
+    public void setPledgeEnd(ZonedDateTime pledgeEnd) { this.pledgeEnd = pledgeEnd; }
 
     public PledgeFrequency getPledgeFrequency() { return pledgeFrequency; }
     public void setPledgeFrequency(PledgeFrequency pledgeFrequency) { this.pledgeFrequency = pledgeFrequency; }
