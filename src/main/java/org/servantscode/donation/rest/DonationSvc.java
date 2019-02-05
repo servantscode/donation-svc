@@ -3,6 +3,7 @@ package org.servantscode.donation.rest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.EnumUtils;
+import org.servantscode.commons.rest.SCServiceBase;
 import org.servantscode.donation.Donation;
 import org.servantscode.donation.DonationPrediction;
 import org.servantscode.donation.Pledge;
@@ -16,11 +17,12 @@ import java.util.List;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 @Path("/donation")
-public class DonationSvc {
+public class DonationSvc extends SCServiceBase {
     private static final Logger LOG = LogManager.getLogger(DonationSvc.class);
 
     @GET @Path("/family/{familyId}") @Produces(APPLICATION_JSON)
     public List<Donation> getDonations(@PathParam("familyId") int familyId) {
+        verifyUserAccess("donation.read");
         try {
             return new DonationDB().getFamilyDonations(familyId);
         } catch(Throwable t) {
@@ -32,6 +34,7 @@ public class DonationSvc {
     @GET @Path("/predict") @Produces(APPLICATION_JSON)
     public DonationPrediction getDonationPrediction(@QueryParam("familyId") int familyId,
                                                     @QueryParam("envelopeNumber") int envelopeNumber) {
+        verifyUserAccess("donation.create");
         if(familyId <= 0 && envelopeNumber <= 0)
             throw new BadRequestException();
 
@@ -82,6 +85,7 @@ public class DonationSvc {
 
     @POST @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public Donation createDonation(Donation donation) {
+        verifyUserAccess("donation.create");
         try {
             return new DonationDB().createDonation(donation);
         } catch(Throwable t) {
@@ -92,6 +96,7 @@ public class DonationSvc {
 
     @POST @Path("/batch") @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public List<Donation> createDonations(List<Donation> donations) {
+        verifyUserAccess("donation.create");
         try {
             List<Donation> createdDonations = new ArrayList<>(donations.size());
             DonationDB db = new DonationDB();
@@ -107,6 +112,7 @@ public class DonationSvc {
     @PUT @Path("/{donationId}") @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public Donation updateDonation(@PathParam("donationId") int donationId,
                                   Donation donation) {
+        verifyUserAccess("donation.update");
         try {
             if(!new DonationDB().updateDonation(donation))
                 throw new NotFoundException();
@@ -120,6 +126,7 @@ public class DonationSvc {
 
     @DELETE @Path("/{donationId}")
     public void deleteDonation(@PathParam("donationId") int donationId) {
+        verifyUserAccess("donation.delete");
         try {
             if(!new DonationDB().deleteDonation(donationId))
                 throw new NotFoundException();
