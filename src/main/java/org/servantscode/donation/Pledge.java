@@ -1,5 +1,7 @@
 package org.servantscode.donation;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.time.ZonedDateTime;
 
 public class Pledge {
@@ -9,7 +11,6 @@ public class Pledge {
     private int id;
     private int familyId;
     private PledgeType pledgeType;
-    private int envelopeNumber;
     private PledgeFrequency pledgeFrequency;
     private float pledgeAmount;
     private float annualPledgeAmount;
@@ -17,6 +18,9 @@ public class Pledge {
     private ZonedDateTime pledgeDate;
     private ZonedDateTime pledgeStart;
     private ZonedDateTime pledgeEnd;
+
+    @JsonIgnore
+    private int envelopeNumber;
 
     // ----- Accessors -----
     public int getId() { return id; }

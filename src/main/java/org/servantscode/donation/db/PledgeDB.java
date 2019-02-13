@@ -12,7 +12,7 @@ import java.util.List;
 
 public class PledgeDB extends DBAccess {
     public Pledge getActivePledge(int familyId) {
-        String sql = "SELECT * from pledges WHERE family_id=? AND pledge_start < NOW() and pledge_end > NOW()";
+        String sql = "SELECT p.*, f.envelope_number from pledges p, families f WHERE p.family_id = f.id AND family_id=? AND pledge_start < NOW() and pledge_end > NOW()";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
@@ -29,7 +29,7 @@ public class PledgeDB extends DBAccess {
     }
 
     public Pledge getActivePledgeByEnvelope(int envelopeNumber) {
-        String sql = "SELECT * from pledges WHERE envelope_number=? AND pledge_start < NOW() and pledge_end > NOW()";
+        String sql = "SELECT p.*, f.envelope_number from pledges p, families f WHERE p.family_id = f.id AND envelope_number=? AND pledge_start < NOW() and pledge_end > NOW()";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
@@ -46,7 +46,7 @@ public class PledgeDB extends DBAccess {
     }
 
     public List<Pledge> getFamilyPledges(int familyId) {
-        String sql = "SELECT * from pledges WHERE family_id=? ORDER BY pledge_end DESC";
+        String sql = "SELECT p.*, f.envelope_number from pledges p, families f WHERE p.family_id = f.id AND family_id=? ORDER BY pledge_end DESC";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
@@ -62,18 +62,17 @@ public class PledgeDB extends DBAccess {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                      "INSERT INTO pledges " +
-                          "(family_id, pledge_type, envelope_number, pledge_date, pledge_start, pledge_end, frequency, pledge_increment, total_pledge) " +
-                          "VALUES (?,?,?,?,?,?,?,?,?)", PreparedStatement.RETURN_GENERATED_KEYS)
+                          "(family_id, pledge_type, pledge_date, pledge_start, pledge_end, frequency, pledge_increment, total_pledge) " +
+                          "VALUES (?,?,?,?,?,?,?,?)", PreparedStatement.RETURN_GENERATED_KEYS)
         ) {
             stmt.setInt(1, pledge.getFamilyId());
             stmt.setString(2, pledge.getPledgeType().toString());
-            stmt.setInt(3, pledge.getEnvelopeNumber());
-            stmt.setTimestamp(4, convert(pledge.getPledgeDate()));
-            stmt.setTimestamp(5, convert(pledge.getPledgeStart()));
-            stmt.setTimestamp(6, convert(pledge.getPledgeEnd()));
-            stmt.setString(7, pledge.getPledgeFrequency().toString());
-            stmt.setFloat(8, pledge.getPledgeAmount());
-            stmt.setFloat(9, pledge.getAnnualPledgeAmount());
+            stmt.setTimestamp(3, convert(pledge.getPledgeDate()));
+            stmt.setTimestamp(4, convert(pledge.getPledgeStart()));
+            stmt.setTimestamp(5, convert(pledge.getPledgeEnd()));
+            stmt.setString(6, pledge.getPledgeFrequency().toString());
+            stmt.setFloat(7, pledge.getPledgeAmount());
+            stmt.setFloat(8, pledge.getAnnualPledgeAmount());
 
             if(stmt.executeUpdate() == 0) {
                 throw new RuntimeException("Could not store donation for family: " + pledge.getFamilyId());
@@ -93,19 +92,18 @@ public class PledgeDB extends DBAccess {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                      "UPDATE pledges SET " +
-                          "family_id=?, pledge_type=?, envelope_number=?, pledge_date=?, pledge_start=?, pledge_end=?, frequency=?, pledge_increment=?, total_pledge=? " +
+                          "family_id=?, pledge_type=?, pledge_date=?, pledge_start=?, pledge_end=?, frequency=?, pledge_increment=?, total_pledge=? " +
                           "WHERE id=?")
         ) {
             stmt.setInt(1, pledge.getFamilyId());
             stmt.setString(2, pledge.getPledgeType().toString());
-            stmt.setInt(3, pledge.getEnvelopeNumber());
-            stmt.setTimestamp(4, convert(pledge.getPledgeDate()));
-            stmt.setTimestamp(5, convert(pledge.getPledgeStart()));
-            stmt.setTimestamp(6, convert(pledge.getPledgeEnd()));
-            stmt.setString(7, pledge.getPledgeFrequency().toString());
-            stmt.setFloat(8, pledge.getPledgeAmount());
-            stmt.setFloat(9, pledge.getAnnualPledgeAmount());
-            stmt.setInt(10, pledge.getId());
+            stmt.setTimestamp(3, convert(pledge.getPledgeDate()));
+            stmt.setTimestamp(4, convert(pledge.getPledgeStart()));
+            stmt.setTimestamp(5, convert(pledge.getPledgeEnd()));
+            stmt.setString(6, pledge.getPledgeFrequency().toString());
+            stmt.setFloat(7, pledge.getPledgeAmount());
+            stmt.setFloat(8, pledge.getAnnualPledgeAmount());
+            stmt.setInt(9, pledge.getId());
 
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
