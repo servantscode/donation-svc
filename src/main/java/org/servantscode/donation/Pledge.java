@@ -6,7 +6,7 @@ import java.time.ZonedDateTime;
 
 public class Pledge {
     public enum PledgeType {EGIFT, BASKET};
-    public enum PledgeFrequency {WEEKLY, MONTHLY, QUARTERLY, ANNUALLY};
+    public enum PledgeFrequency {WEEKLY, SEMI_MONTHLY, MONTHLY, QUARTERLY, SEMI_ANNUALLY, ANNUALLY};
 
     private int id;
     private int familyId;
