@@ -6,8 +6,10 @@ import org.servantscode.commons.EnumUtils;
 import org.servantscode.commons.rest.SCServiceBase;
 import org.servantscode.donation.Donation;
 import org.servantscode.donation.DonationPrediction;
+import org.servantscode.donation.FamilyGivingInfo;
 import org.servantscode.donation.Pledge;
 import org.servantscode.donation.db.DonationDB;
+import org.servantscode.donation.db.FamilyGivingInfoDB;
 import org.servantscode.donation.db.PledgeDB;
 
 import javax.ws.rs.*;
@@ -20,11 +22,21 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 public class DonationSvc extends SCServiceBase {
     private static final Logger LOG = LogManager.getLogger(DonationSvc.class);
 
+    private final DonationDB donationDB;
+    private final PledgeDB pledgeDB;
+    private final FamilyGivingInfoDB familyDB;
+
+    public DonationSvc() {
+        this.donationDB = new DonationDB();
+        this.pledgeDB = new PledgeDB();
+        this.familyDB = new FamilyGivingInfoDB();
+    }
+
     @GET @Path("/family/{familyId}") @Produces(APPLICATION_JSON)
     public List<Donation> getDonations(@PathParam("familyId") int familyId) {
         verifyUserAccess("donation.read");
         try {
-            return new DonationDB().getFamilyDonations(familyId);
+            return donationDB.getFamilyDonations(familyId);
         } catch(Throwable t) {
             LOG.error("Failed to retrieve family donations: " + familyId, t);
             throw t;
@@ -39,28 +51,22 @@ public class DonationSvc extends SCServiceBase {
             throw new BadRequestException();
 
         try {
-            PledgeDB pdb = new PledgeDB();
+            FamilyGivingInfo info = familyId > 0 ?
+                    familyDB.getFamilyPledgeById(familyId):
+                    familyDB.getFamilyPledgeByEnvelope(envelopeNumber);
 
-            Pledge p;
-            int localFamilyId = familyId;
-
-            if(familyId > 0) {
-                p = pdb.getActivePledge(familyId);
-            } else if(envelopeNumber > 0) {
-                p = pdb.getActivePledgeByEnvelope(envelopeNumber);
-                if(p == null)
-                    throw new NotFoundException();
-                localFamilyId = p.getFamilyId();
-            } else {
-                throw new NotFoundException();
+            if(info == null) {
+                LOG.error("No family found for prediction");
+                throw new NotFoundException("No family specified for prediction");
             }
 
-            Donation d = new DonationDB().getLastDonation(localFamilyId );
-            String surname = pdb.getFamilySurname(localFamilyId);
+            Pledge p = pledgeDB.getActivePledge(info.getId());
+            Donation d = donationDB.getLastDonation(info.getId());
 
             DonationPrediction pred = new DonationPrediction();
-            pred.setFamilyName(surname);
-            pred.setFamilyId(localFamilyId);
+            pred.setFamilyId(info.getId());
+            pred.setFamilyName(info.getSurname());
+            pred.setEnvelopeNumber(info.getEnvelopeNumber());
 
             if(d != null) {
                 pred.setAmount(d.getAmount());
@@ -69,7 +75,6 @@ public class DonationSvc extends SCServiceBase {
 
             if(p != null) {
                 pred.setAmount(p.getPledgeAmount()); // Prefer the amount from the pledge if available.
-                pred.setEnvelopeNumber(p.getEnvelopeNumber());
             }
 
             return pred;

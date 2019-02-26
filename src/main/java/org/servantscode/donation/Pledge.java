@@ -19,9 +19,6 @@ public class Pledge {
     private ZonedDateTime pledgeStart;
     private ZonedDateTime pledgeEnd;
 
-    @JsonIgnore
-    private int envelopeNumber;
-
     // ----- Accessors -----
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
@@ -32,9 +29,6 @@ public class Pledge {
     public PledgeType getPledgeType() { return pledgeType; }
     public void setPledgeType(PledgeType pledgeType) { this.pledgeType = pledgeType; }
     public void setPledgeType(String pledgeType) { this.pledgeType = PledgeType.valueOf(pledgeType); }
-
-    public int getEnvelopeNumber() { return envelopeNumber; }
-    public void setEnvelopeNumber(int envelopeNumber) { this.envelopeNumber = envelopeNumber; }
 
     public ZonedDateTime getPledgeDate() { return pledgeDate; }
     public void setPledgeDate(ZonedDateTime pledgeDate) { this.pledgeDate = pledgeDate; }

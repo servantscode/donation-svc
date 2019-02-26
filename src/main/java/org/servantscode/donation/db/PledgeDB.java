@@ -12,7 +12,7 @@ import java.util.List;
 
 public class PledgeDB extends DBAccess {
     public Pledge getActivePledge(int familyId) {
-        String sql = "SELECT p.*, f.envelope_number from pledges p, families f WHERE p.family_id = f.id AND family_id=? AND pledge_start < NOW() and pledge_end > NOW()";
+        String sql = "SELECT * FROM pledges WHERE family_id=? AND pledge_start < NOW() and pledge_end > NOW()";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
@@ -28,25 +28,8 @@ public class PledgeDB extends DBAccess {
         }
     }
 
-    public Pledge getActivePledgeByEnvelope(int envelopeNumber) {
-        String sql = "SELECT p.*, f.envelope_number from pledges p, families f WHERE p.family_id = f.id AND envelope_number=? AND pledge_start < NOW() and pledge_end > NOW()";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
-            stmt.setInt(1, envelopeNumber);
-
-            List<Pledge> results = processPledgeResults(stmt);
-            if(results.isEmpty())
-                return null;
-
-            return results.get(0);
-        } catch (SQLException e) {
-            throw new RuntimeException("Could not retrieve pledge for envelope: " + envelopeNumber, e);
-        }
-    }
-
     public List<Pledge> getFamilyPledges(int familyId) {
-        String sql = "SELECT p.*, f.envelope_number from pledges p, families f WHERE p.family_id = f.id AND family_id=? ORDER BY pledge_end DESC";
+        String sql = "SELECT * FROM pledges WHERE family_id=? ORDER BY pledge_end DESC";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
@@ -124,24 +107,6 @@ public class PledgeDB extends DBAccess {
         }
     }
 
-    //TODO: This should really be a service call, not a cross service DB lookup, but I'm leaving it as is until
-    //      production network architecture is sorted out. [Greg]
-    public String getFamilySurname(int familyId) {
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement( "SELECT surname FROM families WHERE id=?")
-        ) {
-            stmt.setInt(1, familyId);
-
-            try(ResultSet rs = stmt.executeQuery()) {
-                if(rs.next())
-                    return rs.getString(1);
-            }
-            return null;
-        } catch (SQLException e) {
-            throw new RuntimeException("Could not find family with id: " + familyId, e);
-        }
-    }
-
     // ----- Private -----
     private List<Pledge> processPledgeResults(PreparedStatement stmt) throws SQLException {
         try (ResultSet rs = stmt.executeQuery()){
@@ -151,7 +116,6 @@ public class PledgeDB extends DBAccess {
                 pledge.setId(rs.getInt("id"));
                 pledge.setFamilyId(rs.getInt("family_id"));
                 pledge.setPledgeType(rs.getString("pledge_type"));
-                pledge.setEnvelopeNumber(rs.getInt("envelope_number"));
                 pledge.setPledgeDate(convert(rs.getTimestamp("pledge_date")));
                 pledge.setPledgeStart(convert(rs.getTimestamp("pledge_start")));
                 pledge.setPledgeEnd(convert(rs.getTimestamp("pledge_end")));
