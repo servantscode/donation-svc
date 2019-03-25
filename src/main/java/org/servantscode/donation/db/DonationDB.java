@@ -1,5 +1,6 @@
 package org.servantscode.donation.db;
 
+import org.servantscode.commons.StringUtils;
 import org.servantscode.commons.db.DBAccess;
 import org.servantscode.donation.Donation;
 
@@ -10,18 +11,49 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.lang.String.format;
+import static org.servantscode.commons.StringUtils.isEmpty;
+
 public class DonationDB extends DBAccess {
-    public List<Donation> getFamilyDonations(int familyId) {
-        String sql = "SELECT * FROM donations WHERE family_id=? ORDER BY date DESC";
+    public int getDonationCount(int familyId, String search) {
+        String sql = format("SELECT count(1) FROM donations WHERE family_id=? %s",
+                optionalWhereClause(search));
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
             stmt.setInt(1, familyId);
 
+            try(ResultSet rs = stmt.executeQuery()) {
+                if(rs.next())
+                    return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not retrieve donations for family: " + familyId, e);
+        }
+        return 0;
+    }
+
+    public List<Donation> getFamilyDonations(int familyId, int start, int count, String sortField, String search) {
+        String sql = format("SELECT * FROM donations WHERE family_id=? %s ORDER BY %s LIMIT ? OFFSET ?",
+                optionalWhereClause(search),
+                sortField);
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)
+        ) {
+            stmt.setInt(1, familyId);
+            stmt.setInt(2, count);
+            stmt.setInt(3, start);
+
             return processDonationResults(stmt);
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve donations for family: " + familyId, e);
         }
+    }
+
+    private String optionalWhereClause(String search) {
+        //TODO: Fill this in with advanced search capabilities
+//        return !isEmpty(search) ? format(" AND p.name ILIKE '%%%s%%'", search.replace("'", "''")) : "";
+        return "";
     }
 
     public Donation getLastDonation(int familyId) {
@@ -121,4 +153,5 @@ public class DonationDB extends DBAccess {
             return donations;
         }
     }
+
 }

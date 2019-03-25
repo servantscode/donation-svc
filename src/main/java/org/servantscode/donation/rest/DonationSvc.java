@@ -3,6 +3,7 @@ package org.servantscode.donation.rest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.EnumUtils;
+import org.servantscode.commons.rest.PaginatedResponse;
 import org.servantscode.commons.rest.SCServiceBase;
 import org.servantscode.donation.Donation;
 import org.servantscode.donation.DonationPrediction;
@@ -33,10 +34,18 @@ public class DonationSvc extends SCServiceBase {
     }
 
     @GET @Path("/family/{familyId}") @Produces(APPLICATION_JSON)
-    public List<Donation> getDonations(@PathParam("familyId") int familyId) {
-        verifyUserAccess("donation.read");
+    public PaginatedResponse<Donation> getDonations(@PathParam("familyId") int familyId,
+                                                    @QueryParam("start") @DefaultValue("0") int start,
+                                                    @QueryParam("count") @DefaultValue("10") int count,
+                                                    @QueryParam("sort_field") @DefaultValue("date DESC") String sortField,
+                                                    @QueryParam("partial_name") @DefaultValue("") String search) {
+
+        verifyUserAccess("donation.list");
         try {
-            return donationDB.getFamilyDonations(familyId);
+            int totalDonations = donationDB.getDonationCount(familyId, search);
+
+            List<Donation> donations = donationDB.getFamilyDonations(familyId, start, count, sortField, search);
+            return new PaginatedResponse<>(start, donations.size(), totalDonations, donations);
         } catch(Throwable t) {
             LOG.error("Failed to retrieve family donations: " + familyId, t);
             throw t;
