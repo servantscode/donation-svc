@@ -10,7 +10,43 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.lang.String.format;
+
 public class PledgeDB extends DBAccess {
+
+    public int getActivePledgeCount(String search) {
+        String sql = format("SELECT count(1) FROM pledges %s",
+                optionalWhereClause(search));
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)
+        ) {
+
+            try(ResultSet rs = stmt.executeQuery()) {
+                if(rs.next())
+                    return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not retrieve active pledges.", e);
+        }
+        return 0;
+    }
+
+    public List<Pledge> getActivePledges(int start, int count, String sortField, String search) {
+        String sql = format("SELECT * FROM pledges %s ORDER BY %s LIMIT ? OFFSET ?",
+                optionalWhereClause(search),
+                sortField);
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)
+        ) {
+            stmt.setInt(1, count);
+            stmt.setInt(2, start);
+
+            return processPledgeResults(stmt);
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not retrieve active pledges.", e);
+        }
+    }
+
     public Pledge getActivePledge(int familyId) {
         String sql = "SELECT * FROM pledges WHERE family_id=? AND pledge_start < NOW() and pledge_end > NOW()";
         try (Connection conn = getConnection();
@@ -126,5 +162,11 @@ public class PledgeDB extends DBAccess {
             }
             return pledges;
         }
+    }
+
+    private String optionalWhereClause(String search) {
+        //TODO: Fill this in with advanced search capabilities
+//        return !isEmpty(search) ? format(" AND p.name ILIKE '%%%s%%'", search.replace("'", "''")) : "";
+        return "";
     }
 }

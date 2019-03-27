@@ -4,7 +4,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.omg.CosNaming.NamingContextPackage.NotFound;
 import org.servantscode.commons.EnumUtils;
+import org.servantscode.commons.rest.PaginatedResponse;
 import org.servantscode.commons.rest.SCServiceBase;
+import org.servantscode.donation.Donation;
 import org.servantscode.donation.Pledge;
 import org.servantscode.donation.db.PledgeDB;
 
@@ -20,6 +22,30 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 @Path("/pledge")
 public class PledgeSvc extends SCServiceBase {
     private static final Logger LOG = LogManager.getLogger(PledgeSvc.class);
+
+    private final PledgeDB db;
+
+    public PledgeSvc() {
+        this.db = new PledgeDB();
+    }
+
+    @GET  @Produces(APPLICATION_JSON)
+    public PaginatedResponse<Pledge> getActivePledges(@QueryParam("start") @DefaultValue("0") int start,
+                                                      @QueryParam("count") @DefaultValue("10") int count,
+                                                      @QueryParam("sort_field") @DefaultValue("pledge_date") String sortField,
+                                                      @QueryParam("partial_name") @DefaultValue("") String search) {
+
+        verifyUserAccess("pledge.list");
+        try {
+            int totalPledges = db.getActivePledgeCount(search);
+
+            List<Pledge> pledges = db.getActivePledges(start, count, sortField, search);
+            return new PaginatedResponse<>(start, pledges.size(), totalPledges, pledges);
+        } catch(Throwable t) {
+            LOG.error("Failed to retrieve active pledges.", t);
+            throw t;
+        }
+    }
 
     @GET @Path("/family/{familyId}") @Produces(APPLICATION_JSON)
     public Pledge getFamilyPledges(@PathParam("familyId") int familyId) {

@@ -50,11 +50,6 @@ public class DonationDB extends DBAccess {
         }
     }
 
-    private String optionalWhereClause(String search) {
-        //TODO: Fill this in with advanced search capabilities
-//        return !isEmpty(search) ? format(" AND p.name ILIKE '%%%s%%'", search.replace("'", "''")) : "";
-        return "";
-    }
 
     public Donation getLastDonation(int familyId) {
         String sql = "SELECT * FROM donations WHERE family_id=? ORDER BY date DESC LIMIT 1";
@@ -154,4 +149,9 @@ public class DonationDB extends DBAccess {
         }
     }
 
+    private String optionalWhereClause(String search) {
+        //TODO: Fill this in with advanced search capabilities
+//        return !isEmpty(search) ? format(" AND p.name ILIKE '%%%s%%'", search.replace("'", "''")) : "";
+        return "";
+    }
 }
