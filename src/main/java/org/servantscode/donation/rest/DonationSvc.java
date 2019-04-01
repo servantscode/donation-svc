@@ -65,7 +65,7 @@ public class DonationSvc extends SCServiceBase {
                     familyDB.getFamilyPledgeByEnvelope(envelopeNumber);
 
             if(info == null) {
-                LOG.error("No family found for prediction");
+                LOG.info("No family found for prediction");
                 throw new NotFoundException("No family specified for prediction");
             }
 
@@ -123,9 +123,8 @@ public class DonationSvc extends SCServiceBase {
         }
     }
 
-    @PUT @Path("/{donationId}") @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
-    public Donation updateDonation(@PathParam("donationId") int donationId,
-                                  Donation donation) {
+    @PUT @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
+    public Donation updateDonation(Donation donation) {
         verifyUserAccess("donation.update");
         try {
             if(!new DonationDB().updateDonation(donation))
@@ -133,7 +132,7 @@ public class DonationSvc extends SCServiceBase {
 
             return donation;
         } catch(Throwable t) {
-            LOG.error("Failed to update donation: " + donationId, t);
+            LOG.error("Failed to update donation: " + donation.getId(), t);
             throw t;
         }
     }

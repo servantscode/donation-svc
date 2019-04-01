@@ -80,20 +80,16 @@ public class PledgeSvc extends SCServiceBase {
         }
     }
 
-    @PUT @Path("/{pledgeId}") @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
-    public Pledge updatePledge(@PathParam("pledgeId") int pledgeId,
-                                  Pledge pledge) {
+    @PUT @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
+    public Pledge updatePledge(Pledge pledge) {
         verifyUserAccess("pledge.update");
         try {
-            if(pledge.getId() != pledgeId)
-                throw new BadRequestException();
-
             if(!new PledgeDB().updatePledge(pledge))
                 throw new NotFoundException();
 
             return pledge;
         } catch(Throwable t) {
-            LOG.error("Failed to update pledge: " + pledgeId, t);
+            LOG.error("Failed to update pledge: " + pledge.getId(), t);
             throw t;
         }
     }
