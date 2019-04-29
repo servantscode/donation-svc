@@ -7,6 +7,7 @@ public class Donation {
 
     private long id;
     private int familyId;
+    private int fundId;
     private float amount;
 
     private ZonedDateTime donationDate;
@@ -20,6 +21,9 @@ public class Donation {
 
     public int getFamilyId() { return familyId; }
     public void setFamilyId(int familyId) { this.familyId = familyId; }
+
+    public int getFundId() { return fundId; }
+    public void setFundId(int fundId) { this.fundId = fundId; }
 
     public float getAmount() { return amount; }
     public void setAmount(float amount) { this.amount = amount; }

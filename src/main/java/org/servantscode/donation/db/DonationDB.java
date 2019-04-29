@@ -72,15 +72,16 @@ public class DonationDB extends DBAccess {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                      "INSERT INTO donations " +
-                          "(family_id, amount, date, type, check_number, transaction_id) " +
-                          "VALUES (?,?,?,?,?,?)", PreparedStatement.RETURN_GENERATED_KEYS)
+                          "(family_id, fund_id, amount, date, type, check_number, transaction_id) " +
+                          "VALUES (?,?,?,?,?,?,?)", PreparedStatement.RETURN_GENERATED_KEYS)
         ) {
             stmt.setInt(1, donation.getFamilyId());
-            stmt.setFloat(2, donation.getAmount());
-            stmt.setTimestamp(3, convert(donation.getDonationDate()));
-            stmt.setString(4, donation.getDonationType().toString());
-            stmt.setInt(5, donation.getCheckNumber());
-            stmt.setLong(6, donation.getTransactionId());
+            stmt.setInt(2, donation.getFundId());
+            stmt.setFloat(3, donation.getAmount());
+            stmt.setTimestamp(4, convert(donation.getDonationDate()));
+            stmt.setString(5, donation.getDonationType().toString());
+            stmt.setInt(6, donation.getCheckNumber());
+            stmt.setLong(7, donation.getTransactionId());
 
             if(stmt.executeUpdate() == 0) {
                 throw new RuntimeException("Could not store donation for family: " + donation.getFamilyId());
@@ -100,16 +101,18 @@ public class DonationDB extends DBAccess {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                      "UPDATE donations SET " +
-                          "family_id=?, amount=?, date=?, type=?, check_number=?, transaction_id=? " +
+                          "family_id=?, fund_id=?, amount=?, date=?, type=?, check_number=?, transaction_id=? " +
                           "WHERE id=?")
         ) {
+
             stmt.setInt(1, donation.getFamilyId());
-            stmt.setFloat(2, donation.getAmount());
-            stmt.setTimestamp(3, convert(donation.getDonationDate()));
-            stmt.setString(4, donation.getDonationType().toString());
-            stmt.setInt(5, donation.getCheckNumber());
-            stmt.setLong(6, donation.getTransactionId());
-            stmt.setLong(7, donation.getId());
+            stmt.setInt(2, donation.getFundId());
+            stmt.setFloat(3, donation.getAmount());
+            stmt.setTimestamp(4, convert(donation.getDonationDate()));
+            stmt.setString(5, donation.getDonationType().toString());
+            stmt.setInt(6, donation.getCheckNumber());
+            stmt.setLong(7, donation.getTransactionId());
+            stmt.setLong(8, donation.getId());
 
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -138,6 +141,7 @@ public class DonationDB extends DBAccess {
                 Donation donation = new Donation();
                 donation.setId(rs.getLong("id"));
                 donation.setFamilyId(rs.getInt("family_id"));
+                donation.setFundId(rs.getInt("fund_id"));
                 donation.setAmount(rs.getFloat("amount"));
                 donation.setDonationDate(convert(rs.getTimestamp("date")));
                 donation.setDonationType(rs.getString("type"));

@@ -11,6 +11,7 @@ import org.servantscode.donation.FamilyGivingInfo;
 import org.servantscode.donation.Pledge;
 import org.servantscode.donation.db.DonationDB;
 import org.servantscode.donation.db.FamilyGivingInfoDB;
+import org.servantscode.donation.db.FundDB;
 import org.servantscode.donation.db.PledgeDB;
 
 import javax.ws.rs.*;
@@ -26,11 +27,13 @@ public class DonationSvc extends SCServiceBase {
     private final DonationDB donationDB;
     private final PledgeDB pledgeDB;
     private final FamilyGivingInfoDB familyDB;
+    private final FundDB fundDB;
 
     public DonationSvc() {
         this.donationDB = new DonationDB();
         this.pledgeDB = new PledgeDB();
         this.familyDB = new FamilyGivingInfoDB();
+        this.fundDB = new FundDB();
     }
 
     @GET @Path("/family/{familyId}") @Produces(APPLICATION_JSON)
@@ -100,6 +103,10 @@ public class DonationSvc extends SCServiceBase {
     @POST @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public Donation createDonation(Donation donation) {
         verifyUserAccess("donation.create");
+
+        if(donation.getFundId() <= 0 || fundDB.getFund(donation.getFundId()) == null)
+            throw new BadRequestException();
+
         try {
             return new DonationDB().createDonation(donation);
         } catch(Throwable t) {
@@ -126,6 +133,10 @@ public class DonationSvc extends SCServiceBase {
     @PUT @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public Donation updateDonation(Donation donation) {
         verifyUserAccess("donation.update");
+
+        if(donation.getFundId() <= 0 || fundDB.getFund(donation.getFundId()) == null)
+            throw new BadRequestException();
+
         try {
             if(!new DonationDB().updateDonation(donation))
                 throw new NotFoundException();
