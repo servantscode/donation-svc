@@ -11,6 +11,7 @@ public class Pledge {
     private int id;
     private int familyId;
     private int fundId;
+    private String fundName;
     private PledgeType pledgeType;
     private PledgeFrequency pledgeFrequency;
     private float pledgeAmount;
@@ -29,6 +30,9 @@ public class Pledge {
 
     public int getFundId() { return fundId; }
     public void setFundId(int fundId) { this.fundId = fundId; }
+
+    public String getFundName() { return fundName; }
+    public void setFundName(String fundName) { this.fundName = fundName; }
 
     public PledgeType getPledgeType() { return pledgeType; }
     public void setPledgeType(PledgeType pledgeType) { this.pledgeType = pledgeType; }

@@ -32,8 +32,8 @@ public class PledgeDB extends DBAccess {
     }
 
     public List<Pledge> getActivePledges(int start, int count, String sortField, String search, int fundId) {
-        String sql = format("SELECT * FROM pledges %s ORDER BY %s LIMIT ? OFFSET ?",
-                whereClause(search, fundId),
+        String sql = format("SELECT p.*, f.name FROM pledges p, funds f WHERE f.id=p.fund_id%s ORDER BY %s LIMIT ? OFFSET ?",
+                additionalWhereClause(search, fundId),
                 sortField);
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
@@ -48,7 +48,7 @@ public class PledgeDB extends DBAccess {
     }
 
     public Pledge getActivePledge(int familyId, int fundId) {
-        String sql = "SELECT * FROM pledges WHERE family_id=? AND fund_id=? AND pledge_start < NOW() and pledge_end > NOW()";
+        String sql = "SELECT p.*, f.name FROM pledges p, funds f WHERE f.id=p.fund_id AND family_id=? AND fund_id=? AND pledge_start < NOW() and pledge_end > NOW()";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
@@ -66,7 +66,7 @@ public class PledgeDB extends DBAccess {
     }
 
     public List<Pledge> getActiveFamilyPledges(int familyId) {
-        String sql = "SELECT * FROM pledges WHERE family_id=? AND pledge_start < NOW() and pledge_end > NOW()";
+        String sql = "SELECT p.*, f.name FROM pledges p, funds f WHERE f.id=p.fund_id AND family_id=? AND pledge_start < NOW() and pledge_end > NOW()";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
@@ -79,7 +79,7 @@ public class PledgeDB extends DBAccess {
     }
 
     public List<Pledge> getFamilyPledges(int familyId) {
-        String sql = "SELECT * FROM pledges WHERE family_id=? ORDER BY pledge_end DESC";
+        String sql = "SELECT p.*, f.name FROM pledges p, funds f WHERE f.id=p.fund_id AND family_id=? ORDER BY pledge_end DESC";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
@@ -168,6 +168,7 @@ public class PledgeDB extends DBAccess {
                 pledge.setId(rs.getInt("id"));
                 pledge.setFamilyId(rs.getInt("family_id"));
                 pledge.setFundId(rs.getInt("fund_id"));
+                pledge.setFundName(rs.getString("name"));
                 pledge.setPledgeType(rs.getString("pledge_type"));
                 pledge.setPledgeDate(convert(rs.getTimestamp("pledge_date")));
                 pledge.setPledgeStart(convert(rs.getTimestamp("pledge_start")));
@@ -186,5 +187,12 @@ public class PledgeDB extends DBAccess {
         if(fundId == 0)
             return "";
         return " WHERE fund_id=" + fundId;
+    }
+
+    private String additionalWhereClause(String search, int fundId) {
+        //TODO: Fill this in with advanced search capabilities
+        if(fundId == 0)
+            return "";
+        return " AND fund_id=" + fundId;
     }
 }

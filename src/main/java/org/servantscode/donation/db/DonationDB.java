@@ -34,7 +34,7 @@ public class DonationDB extends DBAccess {
     }
 
     public List<Donation> getFamilyDonations(int familyId, int start, int count, String sortField, String search) {
-        String sql = format("SELECT * FROM donations WHERE family_id=? %s ORDER BY %s LIMIT ? OFFSET ?",
+        String sql = format("SELECT d.*, f.name FROM donations d, funds f WHERE d.fund_id = f.id AND family_id=? %s ORDER BY %s LIMIT ? OFFSET ?",
                 optionalWhereClause(search),
                 sortField);
         try (Connection conn = getConnection();
@@ -51,7 +51,7 @@ public class DonationDB extends DBAccess {
     }
 
     public Donation getLastDonation(int familyId, int fundId) {
-        String sql = "SELECT * FROM donations WHERE family_id=? AND fund_id=? ORDER BY date DESC LIMIT 1";
+        String sql = "SELECT d.*, f.name FROM donations d, funds f WHERE d.fund_id = f.id AND family_id=? AND fund_id=? ORDER BY date DESC LIMIT 1";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
@@ -142,6 +142,7 @@ public class DonationDB extends DBAccess {
                 donation.setId(rs.getLong("id"));
                 donation.setFamilyId(rs.getInt("family_id"));
                 donation.setFundId(rs.getInt("fund_id"));
+                donation.setFundName(rs.getString("name"));
                 donation.setAmount(rs.getFloat("amount"));
                 donation.setDonationDate(convert(rs.getTimestamp("date")));
                 donation.setDonationType(rs.getString("type"));
