@@ -50,13 +50,13 @@ public class DonationDB extends DBAccess {
         }
     }
 
-
-    public Donation getLastDonation(int familyId) {
-        String sql = "SELECT * FROM donations WHERE family_id=? ORDER BY date DESC LIMIT 1";
+    public Donation getLastDonation(int familyId, int fundId) {
+        String sql = "SELECT * FROM donations WHERE family_id=? AND fund_id=? ORDER BY date DESC LIMIT 1";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
             stmt.setInt(1, familyId);
+            stmt.setInt(2, fundId);
 
             List<Donation> donations = processDonationResults(stmt);
             if(donations.isEmpty())

@@ -33,13 +33,14 @@ public class PledgeSvc extends SCServiceBase {
     public PaginatedResponse<Pledge> getActivePledges(@QueryParam("start") @DefaultValue("0") int start,
                                                       @QueryParam("count") @DefaultValue("10") int count,
                                                       @QueryParam("sort_field") @DefaultValue("pledge_date") String sortField,
-                                                      @QueryParam("partial_name") @DefaultValue("") String search) {
+                                                      @QueryParam("partial_name") @DefaultValue("") String search,
+                                                      @QueryParam("fundId") @DefaultValue("0") int fundId) {
 
         verifyUserAccess("pledge.list");
         try {
-            int totalPledges = db.getActivePledgeCount(search);
+            int totalPledges = db.getActivePledgeCount(search, fundId);
+            List<Pledge> pledges = db.getActivePledges(start, count, sortField, search, fundId);
 
-            List<Pledge> pledges = db.getActivePledges(start, count, sortField, search);
             return new PaginatedResponse<>(start, pledges.size(), totalPledges, pledges);
         } catch(Throwable t) {
             LOG.error("Failed to retrieve active pledges.", t);
@@ -48,10 +49,10 @@ public class PledgeSvc extends SCServiceBase {
     }
 
     @GET @Path("/family/{familyId}") @Produces(APPLICATION_JSON)
-    public Pledge getFamilyPledges(@PathParam("familyId") int familyId) {
+    public List<Pledge> getFamilyPledges(@PathParam("familyId") int familyId) {
         verifyUserAccess("pledge.read");
         try {
-            return new PledgeDB().getActivePledge(familyId);
+            return db.getActiveFamilyPledges(familyId);
         } catch(Throwable t) {
             LOG.error("Failed to retrieve family pledge: " + familyId, t);
             throw t;
@@ -62,7 +63,7 @@ public class PledgeSvc extends SCServiceBase {
     public List<Pledge> getFamilyPledgeHistory(@PathParam("familyId") int familyId) {
         verifyUserAccess("pledge.read");
         try {
-            return new PledgeDB().getFamilyPledges(familyId);
+            return db.getFamilyPledges(familyId);
         } catch(Throwable t) {
             LOG.error("Failed to retrieve family pledge: " + familyId, t);
             throw t;
@@ -73,7 +74,7 @@ public class PledgeSvc extends SCServiceBase {
     public Pledge createPledge(Pledge pledge) {
         verifyUserAccess("pledge.create");
         try {
-            return new PledgeDB().createPledge(pledge);
+            return db.createPledge(pledge);
         } catch(Throwable t) {
             LOG.error("Failed to create family pledge: " + pledge.getFamilyId(), t);
             throw t;
@@ -84,7 +85,7 @@ public class PledgeSvc extends SCServiceBase {
     public Pledge updatePledge(Pledge pledge) {
         verifyUserAccess("pledge.update");
         try {
-            if(!new PledgeDB().updatePledge(pledge))
+            if(!db.updatePledge(pledge))
                 throw new NotFoundException();
 
             return pledge;
@@ -98,7 +99,7 @@ public class PledgeSvc extends SCServiceBase {
     public void deletePledge(@PathParam("pledgeId") int pledgeId) {
         verifyUserAccess("pledge.delete");
         try {
-            if(!new PledgeDB().deletePledge(pledgeId))
+            if(!db.deletePledge(pledgeId))
                 throw new NotFoundException();
         } catch(Throwable t) {
             LOG.error("Failed to delete pledge: " + pledgeId, t);

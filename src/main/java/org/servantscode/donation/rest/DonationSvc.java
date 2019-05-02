@@ -57,7 +57,8 @@ public class DonationSvc extends SCServiceBase {
 
     @GET @Path("/predict") @Produces(APPLICATION_JSON)
     public DonationPrediction getDonationPrediction(@QueryParam("familyId") int familyId,
-                                                    @QueryParam("envelopeNumber") int envelopeNumber) {
+                                                    @QueryParam("envelopeNumber") int envelopeNumber,
+                                                    @QueryParam("fundId") int fundId) {
         verifyUserAccess("donation.create");
         if(familyId <= 0 && envelopeNumber <= 0)
             throw new BadRequestException();
@@ -72,8 +73,8 @@ public class DonationSvc extends SCServiceBase {
                 throw new NotFoundException("No family specified for prediction");
             }
 
-            Pledge p = pledgeDB.getActivePledge(info.getId());
-            Donation d = donationDB.getLastDonation(info.getId());
+            Pledge p = pledgeDB.getActivePledge(info.getId(), fundId);
+            Donation d = donationDB.getLastDonation(info.getId(), fundId);
 
             DonationPrediction pred = new DonationPrediction();
             pred.setFamilyId(info.getId());

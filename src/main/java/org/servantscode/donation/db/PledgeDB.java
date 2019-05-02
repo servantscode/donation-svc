@@ -14,9 +14,9 @@ import static java.lang.String.format;
 
 public class PledgeDB extends DBAccess {
 
-    public int getActivePledgeCount(String search) {
+    public int getActivePledgeCount(String search, int fundId) {
         String sql = format("SELECT count(1) FROM pledges %s",
-                optionalWhereClause(search));
+                whereClause(search, fundId));
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
@@ -31,9 +31,9 @@ public class PledgeDB extends DBAccess {
         return 0;
     }
 
-    public List<Pledge> getActivePledges(int start, int count, String sortField, String search) {
+    public List<Pledge> getActivePledges(int start, int count, String sortField, String search, int fundId) {
         String sql = format("SELECT * FROM pledges %s ORDER BY %s LIMIT ? OFFSET ?",
-                optionalWhereClause(search),
+                whereClause(search, fundId),
                 sortField);
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
@@ -47,18 +47,32 @@ public class PledgeDB extends DBAccess {
         }
     }
 
-    public Pledge getActivePledge(int familyId) {
-        String sql = "SELECT * FROM pledges WHERE family_id=? AND pledge_start < NOW() and pledge_end > NOW()";
+    public Pledge getActivePledge(int familyId, int fundId) {
+        String sql = "SELECT * FROM pledges WHERE family_id=? AND fund_id=? AND pledge_start < NOW() and pledge_end > NOW()";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
             stmt.setInt(1, familyId);
+            stmt.setInt(2, fundId);
 
             List<Pledge> results = processPledgeResults(stmt);
             if(results.isEmpty())
                 return null;
 
             return results.get(0);
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not retrieve pledge for family: " + familyId, e);
+        }
+    }
+
+    public List<Pledge> getActiveFamilyPledges(int familyId) {
+        String sql = "SELECT * FROM pledges WHERE family_id=? AND pledge_start < NOW() and pledge_end > NOW()";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)
+        ) {
+            stmt.setInt(1, familyId);
+
+            return processPledgeResults(stmt);
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve pledge for family: " + familyId, e);
         }
@@ -81,17 +95,18 @@ public class PledgeDB extends DBAccess {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                      "INSERT INTO pledges " +
-                          "(family_id, pledge_type, pledge_date, pledge_start, pledge_end, frequency, pledge_increment, total_pledge) " +
-                          "VALUES (?,?,?,?,?,?,?,?)", PreparedStatement.RETURN_GENERATED_KEYS)
+                          "(family_id, fund_id, pledge_type, pledge_date, pledge_start, pledge_end, frequency, pledge_increment, total_pledge) " +
+                          "VALUES (?,?,?,?,?,?,?,?,?)", PreparedStatement.RETURN_GENERATED_KEYS)
         ) {
             stmt.setInt(1, pledge.getFamilyId());
-            stmt.setString(2, pledge.getPledgeType().toString());
-            stmt.setTimestamp(3, convert(pledge.getPledgeDate()));
-            stmt.setTimestamp(4, convert(pledge.getPledgeStart()));
-            stmt.setTimestamp(5, convert(pledge.getPledgeEnd()));
-            stmt.setString(6, pledge.getPledgeFrequency().toString());
-            stmt.setFloat(7, pledge.getPledgeAmount());
-            stmt.setFloat(8, pledge.getAnnualPledgeAmount());
+            stmt.setInt(2, pledge.getFundId());
+            stmt.setString(3, pledge.getPledgeType().toString());
+            stmt.setTimestamp(4, convert(pledge.getPledgeDate()));
+            stmt.setTimestamp(5, convert(pledge.getPledgeStart()));
+            stmt.setTimestamp(6, convert(pledge.getPledgeEnd()));
+            stmt.setString(7, pledge.getPledgeFrequency().toString());
+            stmt.setFloat(8, pledge.getPledgeAmount());
+            stmt.setFloat(9, pledge.getAnnualPledgeAmount());
 
             if(stmt.executeUpdate() == 0) {
                 throw new RuntimeException("Could not store donation for family: " + pledge.getFamilyId());
@@ -111,18 +126,19 @@ public class PledgeDB extends DBAccess {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                      "UPDATE pledges SET " +
-                          "family_id=?, pledge_type=?, pledge_date=?, pledge_start=?, pledge_end=?, frequency=?, pledge_increment=?, total_pledge=? " +
+                          "family_id=?, fund_id=?, pledge_type=?, pledge_date=?, pledge_start=?, pledge_end=?, frequency=?, pledge_increment=?, total_pledge=? " +
                           "WHERE id=?")
         ) {
             stmt.setInt(1, pledge.getFamilyId());
-            stmt.setString(2, pledge.getPledgeType().toString());
-            stmt.setTimestamp(3, convert(pledge.getPledgeDate()));
-            stmt.setTimestamp(4, convert(pledge.getPledgeStart()));
-            stmt.setTimestamp(5, convert(pledge.getPledgeEnd()));
-            stmt.setString(6, pledge.getPledgeFrequency().toString());
-            stmt.setFloat(7, pledge.getPledgeAmount());
-            stmt.setFloat(8, pledge.getAnnualPledgeAmount());
-            stmt.setInt(9, pledge.getId());
+            stmt.setInt(2, pledge.getFundId());
+            stmt.setString(3, pledge.getPledgeType().toString());
+            stmt.setTimestamp(4, convert(pledge.getPledgeDate()));
+            stmt.setTimestamp(5, convert(pledge.getPledgeStart()));
+            stmt.setTimestamp(6, convert(pledge.getPledgeEnd()));
+            stmt.setString(7, pledge.getPledgeFrequency().toString());
+            stmt.setFloat(8, pledge.getPledgeAmount());
+            stmt.setFloat(9, pledge.getAnnualPledgeAmount());
+            stmt.setInt(10, pledge.getId());
 
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -151,6 +167,7 @@ public class PledgeDB extends DBAccess {
                 Pledge pledge = new Pledge();
                 pledge.setId(rs.getInt("id"));
                 pledge.setFamilyId(rs.getInt("family_id"));
+                pledge.setFundId(rs.getInt("fund_id"));
                 pledge.setPledgeType(rs.getString("pledge_type"));
                 pledge.setPledgeDate(convert(rs.getTimestamp("pledge_date")));
                 pledge.setPledgeStart(convert(rs.getTimestamp("pledge_start")));
@@ -164,9 +181,10 @@ public class PledgeDB extends DBAccess {
         }
     }
 
-    private String optionalWhereClause(String search) {
+    private String whereClause(String search, int fundId) {
         //TODO: Fill this in with advanced search capabilities
-//        return !isEmpty(search) ? format(" AND p.name ILIKE '%%%s%%'", search.replace("'", "''")) : "";
-        return "";
+        if(fundId == 0)
+            return "";
+        return " WHERE fund_id=" + fundId;
     }
 }
