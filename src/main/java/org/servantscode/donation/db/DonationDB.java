@@ -78,7 +78,7 @@ public class DonationDB extends DBAccess {
             stmt.setInt(1, donation.getFamilyId());
             stmt.setInt(2, donation.getFundId());
             stmt.setFloat(3, donation.getAmount());
-            stmt.setTimestamp(4, convert(donation.getDonationDate()));
+            stmt.setDate(4, convert(donation.getDonationDate()));
             stmt.setString(5, donation.getDonationType().toString());
             stmt.setInt(6, donation.getCheckNumber());
             stmt.setLong(7, donation.getTransactionId());
@@ -108,7 +108,7 @@ public class DonationDB extends DBAccess {
             stmt.setInt(1, donation.getFamilyId());
             stmt.setInt(2, donation.getFundId());
             stmt.setFloat(3, donation.getAmount());
-            stmt.setTimestamp(4, convert(donation.getDonationDate()));
+            stmt.setDate(4, convert(donation.getDonationDate()));
             stmt.setString(5, donation.getDonationType().toString());
             stmt.setInt(6, donation.getCheckNumber());
             stmt.setLong(7, donation.getTransactionId());
@@ -144,7 +144,7 @@ public class DonationDB extends DBAccess {
                 donation.setFundId(rs.getInt("fund_id"));
                 donation.setFundName(rs.getString("name"));
                 donation.setAmount(rs.getFloat("amount"));
-                donation.setDonationDate(convert(rs.getTimestamp("date")));
+                donation.setDonationDate(convert(rs.getDate("date")));
                 donation.setDonationType(rs.getString("type"));
                 donation.setCheckNumber(rs.getInt("check_number"));
                 donation.setTransactionId(rs.getLong("transaction_id"));

@@ -1,6 +1,6 @@
 package org.servantscode.donation;
 
-import java.time.ZonedDateTime;
+import java.time.LocalDate;
 
 public class Donation {
     public enum DonationType {CASH, CHECK, EGIFT, CREDIT_CARD}
@@ -11,7 +11,7 @@ public class Donation {
     private String fundName;
     private float amount;
 
-    private ZonedDateTime donationDate;
+    private LocalDate donationDate;
     private DonationType donationType;
     private int checkNumber;
     private long transactionId;
@@ -32,8 +32,8 @@ public class Donation {
     public float getAmount() { return amount; }
     public void setAmount(float amount) { this.amount = amount; }
 
-    public ZonedDateTime getDonationDate() { return donationDate; }
-    public void setDonationDate(ZonedDateTime donationDate) { this.donationDate = donationDate; }
+    public LocalDate getDonationDate() { return donationDate; }
+    public void setDonationDate(LocalDate donationDate) { this.donationDate = donationDate; }
 
     public DonationType getDonationType() { return donationType; }
     public void setDonationType(DonationType donationType) { this.donationType = donationType; }
