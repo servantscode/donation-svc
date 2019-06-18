@@ -2,20 +2,14 @@ package org.servantscode.donation.rest;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.omg.CosNaming.NamingContextPackage.NotFound;
 import org.servantscode.commons.EnumUtils;
 import org.servantscode.commons.rest.PaginatedResponse;
 import org.servantscode.commons.rest.SCServiceBase;
-import org.servantscode.donation.Donation;
 import org.servantscode.donation.Pledge;
 import org.servantscode.donation.db.PledgeDB;
 
 import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import java.util.Enumeration;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
