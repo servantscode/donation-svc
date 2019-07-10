@@ -2,6 +2,9 @@ package org.servantscode.donation.db;
 
 import org.servantscode.commons.StringUtils;
 import org.servantscode.commons.db.DBAccess;
+import org.servantscode.commons.search.QueryBuilder;
+import org.servantscode.commons.search.SearchParser;
+import org.servantscode.commons.security.OrganizationContext;
 import org.servantscode.donation.Donation;
 
 import java.sql.Connection;
@@ -15,34 +18,38 @@ import static java.lang.String.format;
 import static org.servantscode.commons.StringUtils.isEmpty;
 
 public class DonationDB extends DBAccess {
-    public int getDonationCount(int familyId, String search) {
-        String sql = format("SELECT count(1) FROM donations WHERE family_id=? %s",
-                optionalWhereClause(search));
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
-            stmt.setInt(1, familyId);
 
-            try(ResultSet rs = stmt.executeQuery()) {
-                if(rs.next())
-                    return rs.getInt(1);
-            }
+    private SearchParser<Donation> searchParser;
+
+    public DonationDB() {
+        searchParser = new SearchParser<>(Donation.class);
+    }
+
+    public int getDonationCount(int familyId, String search) {
+        QueryBuilder query = count().from("donations")
+                .where("family_id=?", familyId).search(searchParser.parse(search)).inOrg();
+//        String sql = format("SELECT count(1) FROM donations WHERE family_id=? %s", optionalWhereClause(search));
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = query.prepareStatement(conn);
+             ResultSet rs = stmt.executeQuery()) {
+
+            return rs.next() ? rs.getInt(1) : 0;
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve donations for family: " + familyId, e);
         }
-        return 0;
+    }
+
+    private QueryBuilder baseQuery() {
+        return select("d.*","f.name").from("donations d","funds f").where("d.fund_id=f.id").inOrg("d.org_id");
     }
 
     public List<Donation> getFamilyDonations(int familyId, int start, int count, String sortField, String search) {
-        String sql = format("SELECT d.*, f.name FROM donations d, funds f WHERE d.fund_id = f.id AND family_id=? %s ORDER BY %s LIMIT ? OFFSET ?",
-                optionalWhereClause(search),
-                sortField);
+        QueryBuilder query = baseQuery().where("family_id=?", familyId).sort(sortField).limit(count).offset(start);
+//        String sql = format("SELECT d.*, f.name FROM donations d, funds f WHERE d.fund_id = f.id AND family_id=? %s ORDER BY %s LIMIT ? OFFSET ?",
+//                optionalWhereClause(search),
+//                sortField);
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
-            stmt.setInt(1, familyId);
-            stmt.setInt(2, count);
-            stmt.setInt(3, start);
+             PreparedStatement stmt = query.prepareStatement(conn) ) {
 
             return processDonationResults(stmt);
         } catch (SQLException e) {
@@ -51,18 +58,12 @@ public class DonationDB extends DBAccess {
     }
 
     public Donation getLastDonation(int familyId, int fundId) {
-        String sql = "SELECT d.*, f.name FROM donations d, funds f WHERE d.fund_id = f.id AND family_id=? AND fund_id=? ORDER BY date DESC LIMIT 1";
+        QueryBuilder query = baseQuery().where("family_id=?", familyId).where("fund_id=?", fundId).sort("date DESC").limit(1);
+//        String sql = "SELECT d.*, f.name FROM donations d, funds f WHERE d.fund_id = f.id AND family_id=? AND fund_id=? ORDER BY date DESC LIMIT 1";
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
-            stmt.setInt(1, familyId);
-            stmt.setInt(2, fundId);
+             PreparedStatement stmt = query.prepareStatement(conn)) {
 
-            List<Donation> donations = processDonationResults(stmt);
-            if(donations.isEmpty())
-                return null;
-
-            return donations.get(0);
+            return firstOrNull(processDonationResults(stmt));
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve donations for family: " + familyId, e);
         }
@@ -72,8 +73,8 @@ public class DonationDB extends DBAccess {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                      "INSERT INTO donations " +
-                          "(family_id, fund_id, amount, date, type, check_number, transaction_id) " +
-                          "VALUES (?,?,?,?,?,?,?)", PreparedStatement.RETURN_GENERATED_KEYS)
+                          "(family_id, fund_id, amount, date, type, check_number, transaction_id, org_id) " +
+                          "VALUES (?,?,?,?,?,?,?,?)", PreparedStatement.RETURN_GENERATED_KEYS)
         ) {
             stmt.setInt(1, donation.getFamilyId());
             stmt.setInt(2, donation.getFundId());
@@ -82,6 +83,7 @@ public class DonationDB extends DBAccess {
             stmt.setString(5, donation.getDonationType().toString());
             stmt.setInt(6, donation.getCheckNumber());
             stmt.setLong(7, donation.getTransactionId());
+            stmt.setInt(8, OrganizationContext.orgId());
 
             if(stmt.executeUpdate() == 0) {
                 throw new RuntimeException("Could not store donation for family: " + donation.getFamilyId());
@@ -102,7 +104,7 @@ public class DonationDB extends DBAccess {
              PreparedStatement stmt = conn.prepareStatement(
                      "UPDATE donations SET " +
                           "family_id=?, fund_id=?, amount=?, date=?, type=?, check_number=?, transaction_id=? " +
-                          "WHERE id=?")
+                          "WHERE id=? AND org_id=?")
         ) {
 
             stmt.setInt(1, donation.getFamilyId());
@@ -113,6 +115,7 @@ public class DonationDB extends DBAccess {
             stmt.setInt(6, donation.getCheckNumber());
             stmt.setLong(7, donation.getTransactionId());
             stmt.setLong(8, donation.getId());
+            stmt.setInt(9, OrganizationContext.orgId());
 
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -123,9 +126,10 @@ public class DonationDB extends DBAccess {
     public boolean deleteDonation(int id) {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(
-                     "DELETE FROM donations WHERE id=?")
+                     "DELETE FROM donations WHERE id=? AND org_id=?")
         ) {
             stmt.setInt(1, id);
+            stmt.setInt(2, OrganizationContext.orgId());
 
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -152,11 +156,5 @@ public class DonationDB extends DBAccess {
             }
             return donations;
         }
-    }
-
-    private String optionalWhereClause(String search) {
-        //TODO: Fill this in with advanced search capabilities
-//        return !isEmpty(search) ? format(" AND p.name ILIKE '%%%s%%'", search.replace("'", "''")) : "";
-        return "";
     }
 }

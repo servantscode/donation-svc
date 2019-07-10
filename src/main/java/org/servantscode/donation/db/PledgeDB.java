@@ -1,6 +1,9 @@
 package org.servantscode.donation.db;
 
 import org.servantscode.commons.db.DBAccess;
+import org.servantscode.commons.search.QueryBuilder;
+import org.servantscode.commons.search.SearchParser;
+import org.servantscode.commons.security.OrganizationContext;
 import org.servantscode.donation.Pledge;
 
 import java.sql.Connection;
@@ -14,32 +17,39 @@ import static java.lang.String.format;
 
 public class PledgeDB extends DBAccess {
 
-    public int getActivePledgeCount(String search, int fundId) {
-        String sql = format("SELECT count(1) FROM pledges %s",
-                whereClause(search, fundId));
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
+    private SearchParser<Pledge> searchParser;
 
-            try(ResultSet rs = stmt.executeQuery()) {
-                if(rs.next())
-                    return rs.getInt(1);
-            }
+    public PledgeDB() {
+        this.searchParser = new SearchParser<>(Pledge.class);
+    }
+
+    public int getActivePledgeCount(String search, int fundId) {
+
+        QueryBuilder query = count().from("pledges").search(searchParser.parse(search)).where("fund_id=?", fundId).inOrg();
+//        String sql = format("SELECT count(1) FROM pledges %s",
+//                whereClause(search, fundId));
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = query.prepareStatement(conn);
+             ResultSet rs = stmt.executeQuery()) {
+
+            return rs.next()? rs.getInt(1): 0;
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve active pledges.", e);
         }
-        return 0;
+    }
+
+    private QueryBuilder baseQuery() {
+        return select("p.*", "f.name").from("pledges p", "funds f").where("f.id=p.fund_id");
     }
 
     public List<Pledge> getActivePledges(int start, int count, String sortField, String search, int fundId) {
-        String sql = format("SELECT p.*, f.name FROM pledges p, funds f WHERE f.id=p.fund_id%s ORDER BY %s LIMIT ? OFFSET ?",
-                additionalWhereClause(search, fundId),
-                sortField);
+        QueryBuilder query = baseQuery().search(searchParser.parse(search)).where("fund_id=?", fundId).inOrg("p.org_id")
+                .sort(sortField).limit(count).offset(start);
+//        String sql = format("SELECT p.*, f.name FROM pledges p, funds f WHERE f.id=p.fund_id%s ORDER BY %s LIMIT ? OFFSET ?",
+//                additionalWhereClause(search, fundId),
+//                sortField);
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
-            stmt.setInt(1, count);
-            stmt.setInt(2, start);
+             PreparedStatement stmt = query.prepareStatement(conn)) {
 
             return processPledgeResults(stmt);
         } catch (SQLException e) {
@@ -48,29 +58,24 @@ public class PledgeDB extends DBAccess {
     }
 
     public Pledge getActivePledge(int familyId, int fundId) {
-        String sql = "SELECT p.*, f.name FROM pledges p, funds f WHERE f.id=p.fund_id AND family_id=? AND fund_id=? AND pledge_start < NOW() and pledge_end > NOW()";
+        QueryBuilder query = baseQuery().where("family_id=?", familyId).where("fund_id=?", fundId)
+                .where("pledge_start < NOW() AND pledge_end > NOW()");
+//        String sql = "SELECT p.*, f.name FROM pledges p, funds f WHERE f.id=p.fund_id AND family_id=? AND fund_id=? AND pledge_start < NOW() and pledge_end > NOW()";
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
-            stmt.setInt(1, familyId);
-            stmt.setInt(2, fundId);
+             PreparedStatement stmt = query.prepareStatement(conn) ) {
 
-            List<Pledge> results = processPledgeResults(stmt);
-            if(results.isEmpty())
-                return null;
-
-            return results.get(0);
+            return firstOrNull(processPledgeResults(stmt));
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve pledge for family: " + familyId, e);
         }
     }
 
     public List<Pledge> getActiveFamilyPledges(int familyId) {
-        String sql = "SELECT p.*, f.name FROM pledges p, funds f WHERE f.id=p.fund_id AND family_id=? AND pledge_start < NOW() and pledge_end > NOW()";
+        QueryBuilder query = baseQuery().where("family_id=?", familyId)
+                .where("pledge_start < NOW() AND pledge_end > NOW()");
+//        String sql = "SELECT p.*, f.name FROM pledges p, funds f WHERE f.id=p.fund_id AND family_id=? AND pledge_start < NOW() and pledge_end > NOW()";
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
-            stmt.setInt(1, familyId);
+             PreparedStatement stmt = query.prepareStatement(conn)) {
 
             return processPledgeResults(stmt);
         } catch (SQLException e) {
@@ -79,11 +84,11 @@ public class PledgeDB extends DBAccess {
     }
 
     public List<Pledge> getFamilyPledges(int familyId) {
-        String sql = "SELECT p.*, f.name FROM pledges p, funds f WHERE f.id=p.fund_id AND family_id=? ORDER BY pledge_end DESC";
+        QueryBuilder query = baseQuery().where("family_id=?", familyId)
+                .sort("pledge_end DESC");
+//        String sql = "SELECT p.*, f.name FROM pledges p, funds f WHERE f.id=p.fund_id AND family_id=? ORDER BY pledge_end DESC";
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
-            stmt.setInt(1, familyId);
+             PreparedStatement stmt = query.prepareStatement(conn)) {
 
             return processPledgeResults(stmt);
         } catch (SQLException e) {
@@ -95,8 +100,8 @@ public class PledgeDB extends DBAccess {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                      "INSERT INTO pledges " +
-                          "(family_id, fund_id, pledge_type, pledge_date, pledge_start, pledge_end, frequency, pledge_increment, total_pledge) " +
-                          "VALUES (?,?,?,?,?,?,?,?,?)", PreparedStatement.RETURN_GENERATED_KEYS)
+                          "(family_id, fund_id, pledge_type, pledge_date, pledge_start, pledge_end, frequency, pledge_increment, total_pledge, org_id) " +
+                          "VALUES (?,?,?,?,?,?,?,?,?,?)", PreparedStatement.RETURN_GENERATED_KEYS)
         ) {
             stmt.setInt(1, pledge.getFamilyId());
             stmt.setInt(2, pledge.getFundId());
@@ -107,6 +112,7 @@ public class PledgeDB extends DBAccess {
             stmt.setString(7, pledge.getPledgeFrequency().toString());
             stmt.setFloat(8, pledge.getPledgeAmount());
             stmt.setFloat(9, pledge.getAnnualPledgeAmount());
+            stmt.setInt(10, OrganizationContext.orgId());
 
             if(stmt.executeUpdate() == 0) {
                 throw new RuntimeException("Could not store donation for family: " + pledge.getFamilyId());
@@ -127,7 +133,7 @@ public class PledgeDB extends DBAccess {
              PreparedStatement stmt = conn.prepareStatement(
                      "UPDATE pledges SET " +
                           "family_id=?, fund_id=?, pledge_type=?, pledge_date=?, pledge_start=?, pledge_end=?, frequency=?, pledge_increment=?, total_pledge=? " +
-                          "WHERE id=?")
+                          "WHERE id=? AND org_id=?")
         ) {
             stmt.setInt(1, pledge.getFamilyId());
             stmt.setInt(2, pledge.getFundId());
@@ -139,6 +145,7 @@ public class PledgeDB extends DBAccess {
             stmt.setFloat(8, pledge.getPledgeAmount());
             stmt.setFloat(9, pledge.getAnnualPledgeAmount());
             stmt.setInt(10, pledge.getId());
+            stmt.setInt(11, OrganizationContext.orgId());
 
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -149,9 +156,10 @@ public class PledgeDB extends DBAccess {
     public boolean deletePledge(int pledgeId) {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(
-                     "DELETE FROM pledges WHERE id=?")
+                     "DELETE FROM pledges WHERE id=? AND org_id=?")
         ) {
             stmt.setInt(1, pledgeId);
+            stmt.setInt(2, OrganizationContext.orgId());
 
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {

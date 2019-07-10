@@ -1,6 +1,9 @@
 package org.servantscode.donation.db;
 
 import org.servantscode.commons.db.DBAccess;
+import org.servantscode.commons.search.QueryBuilder;
+import org.servantscode.commons.search.SearchParser;
+import org.servantscode.commons.security.OrganizationContext;
 import org.servantscode.donation.Fund;
 
 import java.sql.Connection;
@@ -15,32 +18,34 @@ import static org.servantscode.commons.StringUtils.isSet;
 
 public class FundDB extends DBAccess {
 
-    public int getFundCount(String search) {
-        String sql = format("SELECT count(1) FROM funds%s",
-                optionalWhereClause(search));
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
+    private SearchParser<Fund> searchParser;
 
-            try(ResultSet rs = stmt.executeQuery()) {
-                if(rs.next())
-                    return rs.getInt(1);
-            }
+    public FundDB() {
+        searchParser = new SearchParser<>(Fund.class);
+    }
+
+    public int getFundCount(String search) {
+        QueryBuilder query = count().from("funds").search(searchParser.parse(search)).inOrg();
+//        String sql = format("SELECT count(1) FROM funds%s",
+//                optionalWhereClause(search));
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = query.prepareStatement(conn);
+             ResultSet rs = stmt.executeQuery()) {
+
+             return rs.next()? rs.getInt(1): 0;
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve fund count.", e);
         }
-        return 0;
     }
 
     public List<Fund> getFunds(int start, int count, String sortField, String search) {
-        String sql = format("SELECT * FROM funds%s ORDER BY %s LIMIT ? OFFSET ?",
-                optionalWhereClause(search),
-                sortField);
+        QueryBuilder query = selectAll().from("funds").search(searchParser.parse(search)).inOrg()
+                .sort(sortField).limit(count).offset(start);
+//        String sql = format("SELECT * FROM funds%s ORDER BY %s LIMIT ? OFFSET ?",
+//                optionalWhereClause(search),
+//                sortField);
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
-            stmt.setInt(1, count);
-            stmt.setInt(2, start);
+             PreparedStatement stmt = query.prepareStatement(conn)) {
 
             return processFundResults(stmt);
         } catch (SQLException e) {
@@ -49,17 +54,12 @@ public class FundDB extends DBAccess {
     }
 
     public Fund getFund(int id) {
-        String sql = "SELECT * FROM funds WHERE id=?";
+        QueryBuilder query = selectAll().from("funds").withId(id).inOrg();
+//        String sql = "SELECT * FROM funds WHERE id=?";
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
-            stmt.setInt(1, id);
+             PreparedStatement stmt = query.prepareStatement(conn) ) {
 
-            List<Fund> results = processFundResults(stmt);
-            if(results.isEmpty())
-                return null;
-
-            return results.get(0);
+            return firstOrNull(processFundResults(stmt));
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve fund: " + id, e);
         }
@@ -68,9 +68,10 @@ public class FundDB extends DBAccess {
     public Fund createFund(Fund fund) {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(
-                     "INSERT INTO funds (name) VALUES (?)", PreparedStatement.RETURN_GENERATED_KEYS)
+                     "INSERT INTO funds (name, org_id) VALUES (?, ?)", PreparedStatement.RETURN_GENERATED_KEYS)
         ) {
             stmt.setString(1, fund.getName());
+            stmt.setInt(2, OrganizationContext.orgId());
 
             if(stmt.executeUpdate() == 0) {
                 throw new RuntimeException("Could not create fund: " + fund.getName());
@@ -89,10 +90,11 @@ public class FundDB extends DBAccess {
     public boolean updateFund(Fund fund) {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(
-                     "UPDATE funds SET name=? WHERE id=?")
+                     "UPDATE funds SET name=? WHERE id=? AND org_id=?")
         ) {
             stmt.setString(1, fund.getName());
             stmt.setInt(2, fund.getId());
+            stmt.setInt(3, OrganizationContext.orgId());
 
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -103,9 +105,10 @@ public class FundDB extends DBAccess {
     public boolean deleteFund(int fundId) {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(
-                     "DELETE FROM funds WHERE id=?")
+                     "DELETE FROM funds WHERE id=? AND org_id=?")
         ) {
             stmt.setInt(1, fundId);
+            stmt.setInt(2, OrganizationContext.orgId());
 
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
