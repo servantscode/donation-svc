@@ -12,6 +12,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import static java.lang.String.format;
@@ -21,14 +22,21 @@ public class DonationDB extends DBAccess {
 
     private SearchParser<Donation> searchParser;
 
+    private static final HashMap<String, String> FIELD_MAP = new HashMap<>(8);
+
+    static {
+        FIELD_MAP.put("fundName", "f.name");
+        FIELD_MAP.put("donationDate", "date");
+        FIELD_MAP.put("donationType", "type");
+    }
+
     public DonationDB() {
-        searchParser = new SearchParser<>(Donation.class);
+        searchParser = new SearchParser<>(Donation.class, "fundName", FIELD_MAP);
     }
 
     public int getDonationCount(int familyId, String search) {
-        QueryBuilder query = count().from("donations")
-                .where("family_id=?", familyId).search(searchParser.parse(search)).inOrg();
-//        String sql = format("SELECT count(1) FROM donations WHERE family_id=? %s", optionalWhereClause(search));
+        QueryBuilder query = count().from("donations d","funds f").where("d.fund_id=f.id")
+                .where("family_id=?", familyId).search(searchParser.parse(search)).inOrg("d.org_id");
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn);
              ResultSet rs = stmt.executeQuery()) {
@@ -44,10 +52,8 @@ public class DonationDB extends DBAccess {
     }
 
     public List<Donation> getFamilyDonations(int familyId, int start, int count, String sortField, String search) {
-        QueryBuilder query = baseQuery().where("family_id=?", familyId).sort(sortField).limit(count).offset(start);
-//        String sql = format("SELECT d.*, f.name FROM donations d, funds f WHERE d.fund_id = f.id AND family_id=? %s ORDER BY %s LIMIT ? OFFSET ?",
-//                optionalWhereClause(search),
-//                sortField);
+        QueryBuilder query = baseQuery().where("family_id=?", familyId).search(searchParser.parse(search))
+                .sort(sortField).limit(count).offset(start);
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn) ) {
 
@@ -59,7 +65,6 @@ public class DonationDB extends DBAccess {
 
     public Donation getLastDonation(int familyId, int fundId) {
         QueryBuilder query = baseQuery().where("family_id=?", familyId).where("fund_id=?", fundId).sort("date DESC").limit(1);
-//        String sql = "SELECT d.*, f.name FROM donations d, funds f WHERE d.fund_id = f.id AND family_id=? AND fund_id=? ORDER BY date DESC LIMIT 1";
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn)) {
 
