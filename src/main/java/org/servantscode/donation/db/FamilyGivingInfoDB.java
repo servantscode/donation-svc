@@ -16,7 +16,7 @@ public class FamilyGivingInfoDB extends DBAccess {
 
     public FamilyGivingInfo getFamilyPledgeByEnvelope(int envelopeNumber) {
         QueryBuilder query = select("id", "surname", "envelope_number").from("families")
-                .where("evelope_number=?", envelopeNumber).inOrg();
+                .where("envelope_number=?", envelopeNumber).inOrg();
 //        String sql = "SELECT id, surname, envelope_number FROM families WHERE envelope_number=?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn)) {
