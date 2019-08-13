@@ -41,7 +41,7 @@ public class DonationSvc extends SCServiceBase {
                                                     @QueryParam("start") @DefaultValue("0") int start,
                                                     @QueryParam("count") @DefaultValue("10") int count,
                                                     @QueryParam("sort_field") @DefaultValue("date DESC") String sortField,
-                                                    @QueryParam("partial_name") @DefaultValue("") String search) {
+                                                    @QueryParam("search") @DefaultValue("") String search) {
 
         verifyUserAccess("donation.list");
         try {

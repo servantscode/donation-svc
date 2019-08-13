@@ -27,7 +27,7 @@ public class PledgeSvc extends SCServiceBase {
     public PaginatedResponse<Pledge> getActivePledges(@QueryParam("start") @DefaultValue("0") int start,
                                                       @QueryParam("count") @DefaultValue("10") int count,
                                                       @QueryParam("sort_field") @DefaultValue("pledge_date") String sortField,
-                                                      @QueryParam("partial_name") @DefaultValue("") String search,
+                                                      @QueryParam("search") @DefaultValue("") String search,
                                                       @QueryParam("fundId") @DefaultValue("0") int fundId) {
 
         verifyUserAccess("pledge.list");
