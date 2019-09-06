@@ -46,7 +46,19 @@ public class DBUpgrade extends AbstractDBUpgrade {
                                            "type TEXT, " +
                                            "check_number INTEGER, " +
                                            "transaction_id bigint, " +
+                                           "batch_number INTEGER, " +
+                                           "notes TEXT, " +
                                            "org_id INTEGER references organizations(id) ON DELETE CASCADE)");
+        }
+
+        if(!columnExists("donations", "batch_number")) {
+            LOG.info("-- Adding column batch_number to donations");
+            runSql("ALTER TABLE donations ADD COLUMN batch_number INTEGER");
+        }
+
+        if(!columnExists("donations", "notes")) {
+            LOG.info("-- Adding column notes to donations");
+            runSql("ALTER TABLE donations ADD COLUMN notes TEXT");
         }
     }
 }
