@@ -7,6 +7,7 @@ public class Donation {
 
     private long id;
     private int familyId;
+    private String familyName;
     private int fundId;
     private String fundName;
     private float amount;
@@ -25,6 +26,9 @@ public class Donation {
 
     public int getFamilyId() { return familyId; }
     public void setFamilyId(int familyId) { this.familyId = familyId; }
+
+    public String getFamilyName() { return familyName; }
+    public void setFamilyName(String familyName) { this.familyName = familyName; }
 
     public int getFundId() { return fundId; }
     public void setFundId(int fundId) { this.fundId = fundId; }

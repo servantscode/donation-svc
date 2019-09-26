@@ -5,17 +5,17 @@ import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.EnumUtils;
 import org.servantscode.commons.rest.PaginatedResponse;
 import org.servantscode.commons.rest.SCServiceBase;
-import org.servantscode.donation.Donation;
-import org.servantscode.donation.DonationPrediction;
-import org.servantscode.donation.FamilyGivingInfo;
-import org.servantscode.donation.Pledge;
+import org.servantscode.donation.*;
 import org.servantscode.donation.db.DonationDB;
 import org.servantscode.donation.db.FamilyGivingInfoDB;
 import org.servantscode.donation.db.FundDB;
 import org.servantscode.donation.db.PledgeDB;
 
 import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
@@ -29,6 +29,8 @@ public class DonationSvc extends SCServiceBase {
     private final FamilyGivingInfoDB familyDB;
     private final FundDB fundDB;
 
+    private static final List<String> EXPORTABLE_FIELDS = Arrays.asList("id", "family_name", "fund_name", "amount", "type", "date", "check_number", "transaction_id");
+
     public DonationSvc() {
         this.donationDB = new DonationDB();
         this.pledgeDB = new PledgeDB();
@@ -37,7 +39,7 @@ public class DonationSvc extends SCServiceBase {
     }
 
     @GET @Path("/family/{familyId}") @Produces(APPLICATION_JSON)
-    public PaginatedResponse<Donation> getDonations(@PathParam("familyId") int familyId,
+    public PaginatedResponse<Donation> getFamilyDonations(@PathParam("familyId") int familyId,
                                                     @QueryParam("start") @DefaultValue("0") int start,
                                                     @QueryParam("count") @DefaultValue("10") int count,
                                                     @QueryParam("sort_field") @DefaultValue("date DESC") String sortField,
@@ -45,12 +47,48 @@ public class DonationSvc extends SCServiceBase {
 
         verifyUserAccess("donation.list");
         try {
-            int totalDonations = donationDB.getDonationCount(familyId, search);
+            int totalDonations = donationDB.getFamilyDonationCount(familyId, search);
+            float totalValue = donationDB.getFamilyDonationTotal(familyId, search);
 
             List<Donation> donations = donationDB.getFamilyDonations(familyId, start, count, sortField, search);
-            return new PaginatedResponse<>(start, donations.size(), totalDonations, donations);
+            return new PaginatedDonationResponse(start, donations.size(), totalDonations, donations, totalValue);
         } catch(Throwable t) {
             LOG.error("Failed to retrieve family donations: " + familyId, t);
+            throw t;
+        }
+    }
+
+    @GET @Path("/report") @Produces(MediaType.TEXT_PLAIN)
+    public Response getDonationReport(@QueryParam("search") @DefaultValue("") String search) {
+
+        verifyUserAccess("donation.export");
+
+        try {
+            LOG.trace(String.format("Retrieving donation report(%s)", search));
+
+            return Response.ok(donationDB.getReportReader(search, EXPORTABLE_FIELDS)).build();
+        } catch (Throwable t) {
+            LOG.error("Retrieving people report failed:", t);
+            throw t;
+        }
+    }
+
+
+    @GET @Produces(APPLICATION_JSON)
+    public PaginatedResponse<Donation> getDonations(@QueryParam("start") @DefaultValue("0") int start,
+                                                    @QueryParam("count") @DefaultValue("10") int count,
+                                                    @QueryParam("sort_field") @DefaultValue("date DESC") String sortField,
+                                                    @QueryParam("search") @DefaultValue("") String search) {
+
+        verifyUserAccess("donation.list");
+        try {
+            int totalDonations = donationDB.getDonationCount(search);
+            float totalValue = donationDB.getDonationTotal(search);
+
+            List<Donation> donations = donationDB.getDonations(start, count, sortField, search);
+            return new PaginatedDonationResponse(start, donations.size(), totalDonations, donations, totalValue);
+        } catch(Throwable t) {
+            LOG.error("Failed to retrieve donations.", t);
             throw t;
         }
     }
