@@ -48,17 +48,13 @@ public class DBUpgrade extends AbstractDBUpgrade {
                                            "transaction_id bigint, " +
                                            "batch_number INTEGER, " +
                                            "notes TEXT, " +
+                                           "recorded_time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), " +
+                                           "recorder_id INTEGER REFERENCES people(id) ON DELETE SET NULL, " +
                                            "org_id INTEGER references organizations(id) ON DELETE CASCADE)");
         }
 
-        if(!columnExists("donations", "batch_number")) {
-            LOG.info("-- Adding column batch_number to donations");
-            runSql("ALTER TABLE donations ADD COLUMN batch_number INTEGER");
-        }
-
-        if(!columnExists("donations", "notes")) {
-            LOG.info("-- Adding column notes to donations");
-            runSql("ALTER TABLE donations ADD COLUMN notes TEXT");
-        }
+        ensureColumn("donations", "recorded_time", "TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()");
+        ensureColumn("donations", "recorder_id", "INTEGER REFERENCES people(id) ON DELETE SET NULL");
     }
 }
+

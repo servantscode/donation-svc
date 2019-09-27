@@ -1,6 +1,7 @@
 package org.servantscode.donation;
 
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 
 public class Donation {
     public enum DonationType {CASH, CHECK, EGIFT, CREDIT_CARD, UNKNOWN}
@@ -19,6 +20,10 @@ public class Donation {
     private long transactionId;
 
     private String notes;
+
+    private ZonedDateTime recordedTime;
+    private int recorderId;
+    private String recorderName;
 
     // ------ Accessors -----
     public long getId() { return id; }
@@ -57,4 +62,13 @@ public class Donation {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public ZonedDateTime getRecordedTime() { return recordedTime; }
+    public void setRecordedTime(ZonedDateTime recordedTime) { this.recordedTime = recordedTime; }
+
+    public int getRecorderId() { return recorderId; }
+    public void setRecorderId(int recorderId) { this.recorderId = recorderId; }
+
+    public String getRecorderName() { return recorderName; }
+    public void setRecorderName(String recorderName) { this.recorderName = recorderName; }
 }

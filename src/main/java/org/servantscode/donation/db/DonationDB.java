@@ -1,12 +1,10 @@
 package org.servantscode.donation.db;
 
-import org.servantscode.commons.StringUtils;
 import org.servantscode.commons.db.DBAccess;
 import org.servantscode.commons.db.EasyDB;
 import org.servantscode.commons.db.ReportStreamingOutput;
 import org.servantscode.commons.search.InsertBuilder;
 import org.servantscode.commons.search.QueryBuilder;
-import org.servantscode.commons.search.SearchParser;
 import org.servantscode.commons.search.UpdateBuilder;
 import org.servantscode.commons.security.OrganizationContext;
 import org.servantscode.donation.Donation;
@@ -19,12 +17,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 import static java.lang.String.format;
-import static org.servantscode.commons.StringUtils.isEmpty;
 
 public class DonationDB extends EasyDB<Donation> {
 
@@ -34,22 +30,20 @@ public class DonationDB extends EasyDB<Donation> {
         FIELD_MAP.put("fundName", "f.name");
         FIELD_MAP.put("donationDate", "date");
         FIELD_MAP.put("donationType", "type");
+        FIELD_MAP.put("familyName", "fam.surname");
     }
 
     public DonationDB() {
-        super(Donation.class, "fundName", FIELD_MAP);
+        super(Donation.class, "familyName", FIELD_MAP);
     }
 
-
     public int getDonationCount(String search) {
-        QueryBuilder query = count().from("donations d","funds f").where("d.fund_id=f.id")
-                .search(searchParser.parse(search)).inOrg("d.org_id");
+        QueryBuilder query = select(count()).search(searchParser.parse(search));
         return getCount(query);
     }
 
     public float getDonationTotal(String search) {
-        QueryBuilder query = select("sum(amount) AS total").from("donations d","funds f").where("d.fund_id=f.id")
-                .search(searchParser.parse(search)).inOrg("d.org_id");
+        QueryBuilder query = select("sum(amount) AS total").search(searchParser.parse(search));
         try(Connection conn = getConnection();
             PreparedStatement stmt = query.prepareStatement(conn);
             ResultSet rs = stmt.executeQuery())
@@ -63,27 +57,36 @@ public class DonationDB extends EasyDB<Donation> {
     }
 
     public List<Donation> getDonations(int start, int count, String sortField, String search) {
-        QueryBuilder query = baseQuery().search(searchParser.parse(search))
-                .sort(sortField).limit(count).offset(start);
+        QueryBuilder query = select(all()).search(searchParser.parse(search))
+                .page(sortField, start, count);
         return get(query);
     }
 
-    private QueryBuilder baseQuery() {
-        return select("d.*","f.name AS fund_name", "fam.surname AS family_name").from("donations d")
+    private static QueryBuilder all() {
+        return DBAccess.select("d.*","f.name AS fund_name", "fam.surname AS family_name", "p.name AS recorder_name");
+    }
+
+    protected static QueryBuilder select(String... fields) {
+        return select(DBAccess.select(fields));
+    }
+
+    private static QueryBuilder select(QueryBuilder select) {
+        return select.from("donations d")
                 .leftJoin("funds f on d.fund_id=f.id")
                 .leftJoin("families fam on d.family_id=fam.id")
+                .leftJoin("people p on d.recorder_id=p.id")
                 .inOrg("d.org_id");
     }
 
     public int getFamilyDonationCount(int familyId, String search) {
-        QueryBuilder query = count().from("donations d","funds f").where("d.fund_id=f.id")
-                .where("family_id=?", familyId).search(searchParser.parse(search)).inOrg("d.org_id");
+        QueryBuilder query = select(count()).with("d.family_id", familyId)
+                .search(searchParser.parse(search));
         return getCount(query);
     }
 
     public float getFamilyDonationTotal(int familyId, String search) {
-        QueryBuilder query = select("sum(amount) AS total").from("donations d","funds f").where("d.fund_id=f.id")
-                .with("family_id", familyId).search(searchParser.parse(search)).inOrg("d.org_id");
+        QueryBuilder query = select("sum(amount) AS total").with("d.family_id", familyId)
+                .search(searchParser.parse(search));
         try(Connection conn = getConnection();
             PreparedStatement stmt = query.prepareStatement(conn);
             ResultSet rs = stmt.executeQuery())
@@ -97,18 +100,20 @@ public class DonationDB extends EasyDB<Donation> {
     }
 
     public List<Donation> getFamilyDonations(int familyId, int start, int count, String sortField, String search) {
-        QueryBuilder query = baseQuery().where("family_id=?", familyId).search(searchParser.parse(search))
-                .sort(sortField).limit(count).offset(start);
+        QueryBuilder query = select(all()).with("d.family_id", familyId)
+                .search(searchParser.parse(search))
+                .page(sortField, start, count);
         return get(query);
     }
 
     public Donation getLastDonation(int familyId, int fundId) {
-        QueryBuilder query = baseQuery().where("family_id=?", familyId).where("fund_id=?", fundId).sort("date DESC").limit(1);
+        QueryBuilder query = select(all()).with("d.family_id", familyId).with("fund_id", fundId)
+                .sort("date DESC, recorded_time DESC").limit(1);
         return getOne(query);
     }
 
     public StreamingOutput getReportReader(String search, final List<String> fields) {
-        QueryBuilder query = baseQuery().search(searchParser.parse(search));
+        QueryBuilder query = select(all()).search(searchParser.parse(search));
         return new ReportStreamingOutput(fields) {
             @Override
             public void write(OutputStream output) throws IOException, WebApplicationException {
@@ -135,6 +140,8 @@ public class DonationDB extends EasyDB<Donation> {
                 .value("transaction_id", donation.getTransactionId())
                 .value("batch_number", donation.getBatchNumber())
                 .value("notes", donation.getNotes())
+                .value("recorded_time", convert(donation.getRecordedTime()))
+                .value("recorder_id", donation.getRecorderId())
                 .value("org_id", OrganizationContext.orgId());
         donation.setId(createAndReturnKey(cmd));
         return donation;
@@ -173,6 +180,10 @@ public class DonationDB extends EasyDB<Donation> {
         donation.setDonationType(rs.getString("type"));
         donation.setCheckNumber(rs.getInt("check_number"));
         donation.setTransactionId(rs.getLong("transaction_id"));
+        donation.setNotes(rs.getString("notes"));
+        donation.setRecordedTime(convert(rs.getTimestamp("recorded_time")));
+        donation.setRecorderId(rs.getInt("recorder_id"));
+        donation.setRecorderName(rs.getString("recorder_name"));
         return donation;
     }
 }

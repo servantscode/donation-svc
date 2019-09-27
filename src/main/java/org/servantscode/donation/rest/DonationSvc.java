@@ -14,6 +14,7 @@ import org.servantscode.donation.db.PledgeDB;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -42,7 +43,7 @@ public class DonationSvc extends SCServiceBase {
     public PaginatedResponse<Donation> getFamilyDonations(@PathParam("familyId") int familyId,
                                                     @QueryParam("start") @DefaultValue("0") int start,
                                                     @QueryParam("count") @DefaultValue("10") int count,
-                                                    @QueryParam("sort_field") @DefaultValue("date DESC") String sortField,
+                                                    @QueryParam("sort_field") @DefaultValue("date DESC, recorded_time DESC") String sortField,
                                                     @QueryParam("search") @DefaultValue("") String search) {
 
         verifyUserAccess("donation.list");
@@ -54,6 +55,17 @@ public class DonationSvc extends SCServiceBase {
             return new PaginatedDonationResponse(start, donations.size(), totalDonations, donations, totalValue);
         } catch(Throwable t) {
             LOG.error("Failed to retrieve family donations: " + familyId, t);
+            throw t;
+        }
+    }
+
+    @GET @Path("/total")
+    public float getDonationTotal(@QueryParam("search") @DefaultValue("") String search) {
+        verifyUserAccess("donation.list");
+        try {
+            return donationDB.getDonationTotal(search);
+        } catch(Throwable t) {
+            LOG.error("Failed to retrieve total donations for search: " + search, t);
             throw t;
         }
     }
@@ -77,7 +89,7 @@ public class DonationSvc extends SCServiceBase {
     @GET @Produces(APPLICATION_JSON)
     public PaginatedResponse<Donation> getDonations(@QueryParam("start") @DefaultValue("0") int start,
                                                     @QueryParam("count") @DefaultValue("10") int count,
-                                                    @QueryParam("sort_field") @DefaultValue("date DESC") String sortField,
+                                                    @QueryParam("sort_field") @DefaultValue("date DESC, recorded_time DESC") String sortField,
                                                     @QueryParam("search") @DefaultValue("") String search) {
 
         verifyUserAccess("donation.list");
@@ -146,6 +158,8 @@ public class DonationSvc extends SCServiceBase {
         if(donation.getFundId() <= 0 || fundDB.getFund(donation.getFundId()) == null)
             throw new BadRequestException();
 
+        donation.setRecordedTime(ZonedDateTime.now());
+        donation.setRecorderId(getUserId());
         try {
             return new DonationDB().createDonation(donation);
         } catch(Throwable t) {
