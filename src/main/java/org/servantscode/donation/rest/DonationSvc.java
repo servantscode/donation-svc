@@ -174,8 +174,12 @@ public class DonationSvc extends SCServiceBase {
         try {
             List<Donation> createdDonations = new ArrayList<>(donations.size());
             DonationDB db = new DonationDB();
-            for(Donation donation: donations)
+            for(Donation donation: donations) {
+                donation.setRecordedTime(ZonedDateTime.now());
+                donation.setRecorderId(getUserId());
+
                 createdDonations.add(db.createDonation(donation));
+            }
             return createdDonations;
         } catch(Throwable t) {
             LOG.error("Batch donation creation failed!!", t);
