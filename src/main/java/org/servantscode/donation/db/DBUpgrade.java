@@ -45,16 +45,22 @@ public class DBUpgrade extends AbstractDBUpgrade {
                                            "date DATE, " +
                                            "type TEXT, " +
                                            "check_number INTEGER, " +
-                                           "transaction_id bigint, " +
+                                           "transaction_id TEXT, " +
                                            "batch_number INTEGER, " +
                                            "notes TEXT, " +
                                            "recorded_time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), " +
                                            "recorder_id INTEGER REFERENCES people(id) ON DELETE SET NULL, " +
+                                           "deductible_amount FLOAT, " +
                                            "org_id INTEGER references organizations(id) ON DELETE CASCADE)");
         }
 
-        ensureColumn("donations", "recorded_time", "TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()");
-        ensureColumn("donations", "recorder_id", "INTEGER REFERENCES people(id) ON DELETE SET NULL");
+        if(!columnTypeMatches("donations", "transaction_id", "TEXT"))
+            runSql("ALTER TABLE donations ALTER COLUMN transaction_id SET DATA TYPE TEXT");
+
+        if(!columnExists("donations", "deductible_amount")) {
+            ensureColumn("donations", "deductible_amount", "FLOAT");
+            runSql("UPDATE donations SET deductible_amount=amount");
+        }
     }
 }
 

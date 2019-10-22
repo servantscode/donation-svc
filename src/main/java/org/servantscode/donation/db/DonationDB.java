@@ -134,6 +134,7 @@ public class DonationDB extends EasyDB<Donation> {
                 .value("family_id", donation.getFamilyId())
                 .value("fund_id", donation.getFundId())
                 .value("amount", donation.getAmount())
+                .value("deductible_amount", donation.getDeductibleAmount())
                 .value("date", convert(donation.getDonationDate()))
                 .value("type", stringify(donation.getDonationType()))
                 .value("check_number", donation.getCheckNumber())
@@ -152,6 +153,7 @@ public class DonationDB extends EasyDB<Donation> {
                 .value("family_id", donation.getFamilyId())
                 .value("fund_id", donation.getFundId())
                 .value("amount", donation.getAmount())
+                .value("deductible_amount", donation.getDeductibleAmount())
                 .value("date", convert(donation.getDonationDate()))
                 .value("type", stringify(donation.getDonationType()))
                 .value("check_number", donation.getCheckNumber())
@@ -176,10 +178,11 @@ public class DonationDB extends EasyDB<Donation> {
         donation.setFundId(rs.getInt("fund_id"));
         donation.setFundName(rs.getString("fund_name"));
         donation.setAmount(rs.getFloat("amount"));
+        donation.setDeductibleAmount(rs.getFloat("deductible_amount"));
         donation.setDonationDate(convert(rs.getDate("date")));
         donation.setDonationType(rs.getString("type"));
         donation.setCheckNumber(rs.getInt("check_number"));
-        donation.setTransactionId(rs.getLong("transaction_id"));
+        donation.setTransactionId(rs.getString("transaction_id"));
         donation.setNotes(rs.getString("notes"));
         donation.setRecordedTime(convert(rs.getTimestamp("recorded_time")));
         donation.setRecorderId(rs.getInt("recorder_id"));

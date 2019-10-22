@@ -12,12 +12,13 @@ public class Donation {
     private int fundId;
     private String fundName;
     private float amount;
+    private float deductibleAmount;
     private int batchNumber;
 
     private LocalDate donationDate;
     private DonationType donationType;
     private int checkNumber;
-    private long transactionId;
+    private String transactionId;
 
     private String notes;
 
@@ -44,6 +45,9 @@ public class Donation {
     public float getAmount() { return amount; }
     public void setAmount(float amount) { this.amount = amount; }
 
+    public float getDeductibleAmount() { return deductibleAmount; }
+    public void setDeductibleAmount(float deductibleAmount) { this.deductibleAmount = deductibleAmount; }
+
     public int getBatchNumber() { return batchNumber; }
     public void setBatchNumber(int batchNumber) { this.batchNumber = batchNumber; }
 
@@ -57,8 +61,8 @@ public class Donation {
     public int getCheckNumber() { return checkNumber; }
     public void setCheckNumber(int checkNumber) { this.checkNumber = checkNumber; }
 
-    public long getTransactionId() { return transactionId; }
-    public void setTransactionId(long transactionId) { this.transactionId = transactionId; }
+    public String getTransactionId() { return transactionId; }
+    public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
