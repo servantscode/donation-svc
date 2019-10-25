@@ -9,13 +9,21 @@ import org.servantscode.donation.Pledge;
 import org.servantscode.donation.db.PledgeDB;
 
 import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 
+import static java.time.temporal.ChronoUnit.DAYS;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 @Path("/pledge")
 public class PledgeSvc extends SCServiceBase {
     private static final Logger LOG = LogManager.getLogger(PledgeSvc.class);
+
+    private static final List<String> EXPORTABLE_FIELDS = Arrays.asList("id", "family_name", "fund_name", "pledge_type", "pledge_date",
+            "pledge_start", "pledge_end", "frequency", "pledge_increment", "total_pledge", "total_donations", "collected_pct");
 
     private final PledgeDB db;
 
@@ -26,14 +34,13 @@ public class PledgeSvc extends SCServiceBase {
     @GET  @Produces(APPLICATION_JSON)
     public PaginatedResponse<Pledge> getActivePledges(@QueryParam("start") @DefaultValue("0") int start,
                                                       @QueryParam("count") @DefaultValue("10") int count,
-                                                      @QueryParam("sort_field") @DefaultValue("pledge_date") String sortField,
-                                                      @QueryParam("search") @DefaultValue("") String search,
-                                                      @QueryParam("fundId") @DefaultValue("0") int fundId) {
+                                                      @QueryParam("sort_field") @DefaultValue("family_name") String sortField,
+                                                      @QueryParam("search") @DefaultValue("") String search) {
 
         verifyUserAccess("pledge.list");
         try {
-            int totalPledges = db.getActivePledgeCount(search, fundId);
-            List<Pledge> pledges = db.getActivePledges(start, count, sortField, search, fundId);
+            int totalPledges = db.getActivePledgeCount(search);
+            List<Pledge> pledges = db.getActivePledges(start, count, sortField, search);
 
             return new PaginatedResponse<>(start, pledges.size(), totalPledges, pledges);
         } catch(Throwable t) {
@@ -41,6 +48,22 @@ public class PledgeSvc extends SCServiceBase {
             throw t;
         }
     }
+
+    @GET @Path("/report") @Produces(MediaType.TEXT_PLAIN)
+    public Response getDonationReport(@QueryParam("search") @DefaultValue("") String search) {
+
+        verifyUserAccess("pledge.export");
+
+        try {
+            LOG.trace(String.format("Retrieving pledge report(%s)", search));
+
+            return Response.ok(db.getReportReader(search, EXPORTABLE_FIELDS)).build();
+        } catch (Throwable t) {
+            LOG.error("Retrieving pledge report failed:", t);
+            throw t;
+        }
+    }
+
 
     @GET @Path("/family/{familyId}") @Produces(APPLICATION_JSON)
     public List<Pledge> getFamilyPledges(@PathParam("familyId") int familyId) {

@@ -7,9 +7,11 @@ import java.time.LocalDate;
 public class Pledge {
     public enum PledgeType {EGIFT, BASKET};
     public enum PledgeFrequency {WEEKLY, SEMI_MONTHLY, MONTHLY, QUARTERLY, SEMI_ANNUALLY, ANNUALLY};
+    public enum PledgeStatus {NOT_STARTED, BEHIND, SLIGHTLY_BEHIND, CURRENT, COMPLETE};
 
     private int id;
     private int familyId;
+    private String familyName;
     private int fundId;
     private String fundName;
     private PledgeType pledgeType;
@@ -21,12 +23,21 @@ public class Pledge {
     private LocalDate pledgeStart;
     private LocalDate pledgeEnd;
 
+    private float collectedAmount;
+    private float collectedPct;
+    private float timePct;
+    private float completionScore;
+    private PledgeStatus pledgeStatus;
+
     // ----- Accessors -----
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
 
     public int getFamilyId() { return familyId; }
     public void setFamilyId(int familyId) { this.familyId = familyId; }
+
+    public String getFamilyName() { return familyName; }
+    public void setFamilyName(String familyName) { this.familyName = familyName; }
 
     public int getFundId() { return fundId; }
     public void setFundId(int fundId) { this.fundId = fundId; }
@@ -56,4 +67,19 @@ public class Pledge {
 
     public float getAnnualPledgeAmount() { return annualPledgeAmount; }
     public void setAnnualPledgeAmount(float annualPledgeAmount) { this.annualPledgeAmount = annualPledgeAmount; }
+
+    public float getCollectedAmount() { return collectedAmount; }
+    public void setCollectedAmount(float collectedAmount) { this.collectedAmount = collectedAmount; }
+
+    public float getCollectedPct() { return collectedPct; }
+    public void setCollectedPct(float collectedPct) { this.collectedPct = collectedPct; }
+
+    public float getTimePct() { return timePct; }
+    public void setTimePct(float timePct) { this.timePct = timePct; }
+
+    public float getCompletionScore() { return completionScore; }
+    public void setCompletionScore(float completionScore) { this.completionScore = completionScore; }
+
+    public PledgeStatus getPledgeStatus() { return pledgeStatus; }
+    public void setPledgeStatus(PledgeStatus pledgeStatus) { this.pledgeStatus = pledgeStatus; }
 }
