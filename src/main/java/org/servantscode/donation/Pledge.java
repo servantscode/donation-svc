@@ -7,7 +7,7 @@ import java.time.LocalDate;
 public class Pledge {
     public enum PledgeType {EGIFT, BASKET};
     public enum PledgeFrequency {WEEKLY, SEMI_MONTHLY, MONTHLY, QUARTERLY, SEMI_ANNUALLY, ANNUALLY};
-    public enum PledgeStatus {NOT_STARTED, BEHIND, SLIGHTLY_BEHIND, CURRENT, COMPLETE};
+    public enum PledgeStatus {NOT_STARTED, BEHIND, SLIGHTLY_BEHIND, CURRENT, COMPLETED};
 
     private int id;
     private int familyId;

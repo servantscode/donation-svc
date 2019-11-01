@@ -133,6 +133,7 @@ public class DonationDB extends EasyDB<Donation> {
         InsertBuilder cmd = insertInto("donations")
                 .value("family_id", donation.getFamilyId())
                 .value("fund_id", donation.getFundId())
+                .value("pledge_id", donation.getPledgeId())
                 .value("amount", donation.getAmount())
                 .value("deductible_amount", donation.getDeductibleAmount())
                 .value("date", convert(donation.getDonationDate()))
@@ -152,6 +153,7 @@ public class DonationDB extends EasyDB<Donation> {
         UpdateBuilder cmd = update("donations")
                 .value("family_id", donation.getFamilyId())
                 .value("fund_id", donation.getFundId())
+                .value("pledge_id", donation.getPledgeId())
                 .value("amount", donation.getAmount())
                 .value("deductible_amount", donation.getDeductibleAmount())
                 .value("date", convert(donation.getDonationDate()))
@@ -177,11 +179,12 @@ public class DonationDB extends EasyDB<Donation> {
         donation.setFamilyName(rs.getString("family_name"));
         donation.setFundId(rs.getInt("fund_id"));
         donation.setFundName(rs.getString("fund_name"));
+        donation.setPledgeId(rs.getInt("pledge_id"));
         donation.setAmount(rs.getFloat("amount"));
         donation.setDeductibleAmount(rs.getFloat("deductible_amount"));
         donation.setDonationDate(convert(rs.getDate("date")));
         donation.setDonationType(rs.getString("type"));
-        donation.setCheckNumber(rs.getInt("check_number"));
+        donation.setCheckNumber(rs.getLong("check_number"));
         donation.setTransactionId(rs.getString("transaction_id"));
         donation.setNotes(rs.getString("notes"));
         donation.setRecordedTime(convert(rs.getTimestamp("recorded_time")));

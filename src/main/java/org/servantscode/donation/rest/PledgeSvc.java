@@ -49,6 +49,7 @@ public class PledgeSvc extends SCServiceBase {
         }
     }
 
+
     @GET @Path("/report") @Produces(MediaType.TEXT_PLAIN)
     public Response getDonationReport(@QueryParam("search") @DefaultValue("") String search) {
 
@@ -130,5 +131,10 @@ public class PledgeSvc extends SCServiceBase {
     @GET @Path("/freqs") @Produces(APPLICATION_JSON)
     public List<String> getPledgeFrequencies() {
         return EnumUtils.listValues(Pledge.PledgeFrequency.class);
+    }
+
+    @GET @Path("/statuses") @Produces(APPLICATION_JSON)
+    public List<String> getPledgeStatuses() {
+        return EnumUtils.listValues(Pledge.PledgeStatus.class);
     }
 }

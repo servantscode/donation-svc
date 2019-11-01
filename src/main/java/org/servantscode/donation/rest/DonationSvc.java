@@ -161,6 +161,9 @@ public class DonationSvc extends SCServiceBase {
         donation.setRecordedTime(ZonedDateTime.now());
         donation.setRecorderId(getUserId());
         try {
+            if(donation.getPledgeId() <= 0)
+                linkPledge(donation);
+
             return new DonationDB().createDonation(donation);
         } catch(Throwable t) {
             LOG.error("Failed to create donation for family: " + donation.getFamilyId(), t);
@@ -177,6 +180,8 @@ public class DonationSvc extends SCServiceBase {
             for(Donation donation: donations) {
                 donation.setRecordedTime(ZonedDateTime.now());
                 donation.setRecorderId(getUserId());
+                if(donation.getPledgeId() <= 0)
+                    linkPledge(donation);
 
                 createdDonations.add(db.createDonation(donation));
             }
@@ -195,6 +200,9 @@ public class DonationSvc extends SCServiceBase {
             throw new BadRequestException();
 
         try {
+            if(donation.getPledgeId() <= 0)
+                linkPledge(donation);
+
             if(!new DonationDB().updateDonation(donation))
                 throw new NotFoundException();
 
@@ -221,4 +229,12 @@ public class DonationSvc extends SCServiceBase {
     public List<String> getDonationTypes() {
         return EnumUtils.listValues(Donation.DonationType.class);
     }
+
+    // ----- Private ----
+    private void linkPledge(Donation donation) {
+        Pledge linkedPledge = pledgeDB.getActivePledge(donation.getFamilyId(), donation.getFundId());
+        if (linkedPledge != null)
+            donation.setPledgeId(linkedPledge.getId());
+    }
+
 }

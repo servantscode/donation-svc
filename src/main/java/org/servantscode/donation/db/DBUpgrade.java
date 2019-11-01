@@ -44,7 +44,7 @@ public class DBUpgrade extends AbstractDBUpgrade {
                                            "amount FLOAT, " +
                                            "date DATE, " +
                                            "type TEXT, " +
-                                           "check_number INTEGER, " +
+                                           "check_number BIGINT, " +
                                            "transaction_id TEXT, " +
                                            "batch_number INTEGER, " +
                                            "notes TEXT, " +
@@ -60,6 +60,14 @@ public class DBUpgrade extends AbstractDBUpgrade {
         if(!columnExists("donations", "deductible_amount")) {
             ensureColumn("donations", "deductible_amount", "FLOAT");
             runSql("UPDATE donations SET deductible_amount=amount");
+        }
+
+        if(!columnTypeMatches("donations", "check_number", "BIGINT"))
+            runSql("ALTER TABLE donations ALTER COLUMN check_number SET DATA TYPE BIGINT");
+
+        if(!columnExists("donations", "pledge_id")) {
+            ensureColumn("donations", "pledge_id", "INTEGER REFERENCES pledges(id) ON DELETE SET NULL");
+            runSql("update donations d set pledge_id = (select id from pledges p where p.fund_id=d.fund_id AND d.family_id=p.family_id AND d.date >= p.pledge_start and d.date <= p.pledge_end limit 1)");
         }
     }
 }
