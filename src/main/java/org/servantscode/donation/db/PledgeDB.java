@@ -42,7 +42,7 @@ public class PledgeDB extends EasyDB<Pledge> {
     }
 
     public PledgeDB() {
-        super(Pledge.class, "family_name", FIELD_MAP);
+        super(Pledge.class, "familyName", FIELD_MAP);
     }
 
     //Query setup
