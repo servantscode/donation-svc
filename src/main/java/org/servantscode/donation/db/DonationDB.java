@@ -84,6 +84,10 @@ public class DonationDB extends EasyDB<Donation> {
         return getCount(query);
     }
 
+    public List<Donation> getAnnualDonations(int familyId, int year) {
+        return get(select(all()).with("d.family_id", familyId).where("date_part('year', date) = ?", year));
+    }
+
     public float getFamilyDonationTotal(int familyId, String search) {
         QueryBuilder query = select("sum(amount) AS total").with("d.family_id", familyId)
                 .search(searchParser.parse(search));
