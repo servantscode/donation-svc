@@ -16,7 +16,8 @@ repositories {
 
 dependencies {
     //Local
-    implementation group: 'com.itextpdf', name: 'itextpdf', version: '5.5.13.1'
+    implementation group: 'org.apache.pdfbox', name: 'pdfbox', version: '2.0.17'
+
     // Template
     implementation group: 'org.servantscode', name: 'java-commons', version: '1.0'
     implementation group: 'javax.activation', name: 'activation', version: '1.1'
