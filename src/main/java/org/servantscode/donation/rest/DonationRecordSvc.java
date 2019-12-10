@@ -2,12 +2,9 @@ package org.servantscode.donation.rest;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.servantscode.client.ApiClientFactory;
+import org.servantscode.client.FamilyServiceClient;
+import org.servantscode.client.ParishServiceClient;
 import org.servantscode.commons.rest.SCServiceBase;
 import org.servantscode.commons.security.OrganizationContext;
 import org.servantscode.donation.Donation;
@@ -17,14 +14,15 @@ import org.servantscode.donation.db.DonationDB;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
-import java.io.IOException;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationTextMarkup.SUB_TYPE_UNDERLINE;
+import static org.servantscode.commons.StringUtils.isSet;
+import static org.servantscode.donation.PdfWriter.Alignment.*;
+import static org.servantscode.donation.PdfWriter.TextDecoration.DOUBLE_OVERLINE;
 
 @Path("/donation/report")
 public class DonationRecordSvc extends SCServiceBase {
@@ -44,9 +42,10 @@ public class DonationRecordSvc extends SCServiceBase {
         verifyUserAccess("donations.read");
         try {
             List<Donation> d = db.getAnnualDonations(familyId, year);
-            String orgName = OrganizationContext.getOrganization().getName();
-//            Parish parish = null;
-//            Family family = null;
+
+            ApiClientFactory.instance().authenticateAsSystem();
+            Map<String, Object> family = new FamilyServiceClient().getFamily(familyId);
+            Map<String, Object> parish = new ParishServiceClient().getParishForOrg(OrganizationContext.orgId());
 
             AtomicReference<Float> total = new AtomicReference<>((float) 0);
             d.stream().map(Donation::getAmount).forEach(a -> total.set(total.get() + a));
@@ -55,18 +54,30 @@ public class DonationRecordSvc extends SCServiceBase {
                 try (PdfWriter writer = new PdfWriter()) {
                     writer.beginText();
                     writer.setFontSize(20);
+                    writer.setAlignment(CENTER);
 
-                    writer.addCenteredLine(String.format("%s", orgName));
-                    writer.addCenteredLine("727 S. Travis St.");
-                    writer.addCenteredLine("Sherman, TX 75090");
-                    writer.addCenteredLine( "903-893-5148");
+                    writer.addLine(parish.get("name").toString());
+                    Map<String, Object> addr = (Map<String, Object>) parish.get("address");
+                    writer.addLine(addr.get("street1").toString());
+                    writer.addLine(String.format("%s, %s %s", addr.get("city"), addr.get("state"), addr.get("zip")));
+                    writer.addLine(parish.get("phoneNumber").toString());
 
                     writer.setFontSize(12);
-                    writer.addLine("John Doe");
-                    writer.addLine("101 Somewhere Dr.");
-                    writer.addLine("Sherman, TX 75090");
+                    writer.setAlignment(LEFT);
+                    writer.addLine(family.get("formalGreeting").toString());
+
+                    Map<String, Object> familyAddr = (Map<String, Object>) parish.get("address");
+                    if(familyAddr != null) {
+                        writer.addLine(familyAddr.get("street1").toString());
+                        writer.addLine(String.format("%s, %s %s", familyAddr.get("city"), familyAddr.get("state"), familyAddr.get("zip")));
+                    }
+
+                    String homePhone = (String) family.get("homePhone");
+                    if(isSet(homePhone));
+                        writer.addLine(homePhone);
+
                     writer.addBlankLine();
-                    writer.addParagraph("Dear Mr. and Mrs. Doe,");
+                    writer.addParagraph(String.format("%s,", family.get("formalGreeting")));
                     writer.addParagraph("It is time to send out financial statements so that you will have a record of your contributions for your income tax report. Your generosity over the past year has made it possible for us to continue the mission and ministry of Jesus. Were it not for your help this would be impossible. So, on behalf of St. Mary's Catholic Parish, thank you.");
                     writer.addParagraph("Our records show that you have contributed the following amount:");
 
@@ -75,8 +86,11 @@ public class DonationRecordSvc extends SCServiceBase {
                     writer.addParagraph("Thank you for your past support. Your continued contributions are greatly appreciated.");
                     writer.addParagraph("Sincerely,");
                     writer.addBlankSpace(2.0f);
-                    writer.addLine("Fr. Martin Castenada");
-                    writer.addLine("Pastoral Administrator");
+                    Map<String, Object> pastor = (Map<String, Object>) parish.get("pastor");
+                    if(pastor != null) {
+                        writer.addLine(pastor.get("name").toString());
+                        writer.addLine("Pastoral Administrator");
+                    }
                     writer.addBlankLine();
 
                     writer.addParagraph("P.S. St. Mary's Catholic Church has not provided, in whole or in part, any goods or services to the above named donor in exchange for this gift.");
@@ -93,22 +107,14 @@ public class DonationRecordSvc extends SCServiceBase {
                         writer.beginText();
                         writer.addParagraph("Our records show that you have made the following tax deductible contributions:");
 
-                        writer.startTable(new int[] {80, 200, 80, 60}, new boolean[] {true, true, false, true});
+                        writer.startTable(new int[] {80, 200, 80, 60}, new PdfWriter.Alignment[] {LEFT, LEFT, RIGHT, LEFT});
                         writer.addTableHeader("Date", "Description", "Amount", "Check");
 
-                        int lineCount = 0;
                         for(Donation don: bigDonations) {
                             writer.addTableRow(don.getDonationDate().format(DateTimeFormatter.ISO_DATE),
                                                don.getFundName(),
                                                String.format("$%.2f", don.getAmount()),
                                                don.getCheckNumber() == 0? "": Long.toString(don.getCheckNumber()));
-
-                            if(++lineCount > 35) {
-                                writer.endText();
-                                writer.newPage();
-                                writer.beginText();
-                                lineCount = 0;
-                            }
                         }
 
                         writer.addBlankSpace(.5f);
@@ -117,7 +123,9 @@ public class DonationRecordSvc extends SCServiceBase {
                                            String.format("$%.2f", littleDonations.get()), "");
 
                         writer.addBlankSpace(.5f);
+                        writer.addDecoration(DOUBLE_OVERLINE);
                         writer.addTableRow("", "Total:", String.format("$%.2f", total.get()), "");
+                        writer.removeDecoration(DOUBLE_OVERLINE);
 
                         writer.endText();
                     }

@@ -17,6 +17,7 @@ repositories {
 dependencies {
     //Local
     implementation group: 'org.apache.pdfbox', name: 'pdfbox', version: '2.0.17'
+    implementation group: 'org.servantscode', name: 'api-client', version: '1.0'
 
     // Template
     implementation group: 'org.servantscode', name: 'java-commons', version: '1.0'

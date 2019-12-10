@@ -1,5 +1,7 @@
 package org.servantscode.donation;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -11,9 +13,15 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class PdfWriter implements Closeable {
+    private static final Logger LOG = LogManager.getLogger(PdfWriter.class);
+
+    public enum Alignment { LEFT, CENTER, RIGHT, JUSTIFIED };
+    public enum TextDecoration { UNDERLINE, DOUBLE_OVERLINE };
 
     private static final float LINE_SPACING = 1.25f;
     private static float MARGIN_Y = 80;
@@ -29,12 +37,14 @@ public class PdfWriter implements Closeable {
     private float currentFontSize = 12;
     private float currentLeading = LINE_SPACING*12;
 
+    private Alignment currentAlignment = Alignment.LEFT;
+    private Set<TextDecoration> currentDecorations = new HashSet();
 
-    private int[] tableColumnWidths = new int[0];
-    private boolean[] tableAlignments = new boolean[0];
+    private int[] columnWidths = new int[0];
+    private Alignment[] columnAlignments = new Alignment[0];
 
-    float currentX = 0f;
-    float currentY = 0f;
+    private float currentX = 0f;
+    private float currentY = 0f;
 
     public PdfWriter() throws IOException {
         document = new PDDocument();
@@ -72,28 +82,67 @@ public class PdfWriter implements Closeable {
         content.setLeading(currentLeading);
     }
 
-    public void addLine(String text) throws IOException {
-        content.showText(text);
-        content.newLine();
+    public void setAlignment(Alignment alignment) {
+        this.currentAlignment = alignment;
     }
 
-    public void addCenteredLine(String line) throws IOException {
-        float titleWidth = calculateWidth(line);
-        float xStart = (pageWidth - titleWidth) / 2;
-        content.newLineAtOffset(xStart, 0);
-        content.showText(line);
-        content.newLineAtOffset(-xStart, -currentLeading);
+    public void addDecoration(TextDecoration decor) {
+        currentDecorations.add(decor);
+    }
+
+    public void removeDecoration(TextDecoration decor) {
+        currentDecorations.remove(decor);
+    }
+    public void addLine(String text) throws IOException {
+        alignText(text, pageWidth);
+        content.showText(text);
+        newLine();
+    }
+
+    private void addText(String text, float width, Alignment alignment) throws IOException {
+        float startX = currentX;
+        alignText(text, width, alignment);
+        float textStart = currentX;
+        content.showText(text);
+        moveRight(startX + width - currentX);
+
+        if(!currentDecorations.isEmpty()) {
+            endText();
+
+            float textEnd = textStart + calculateWidth(text);
+            for(TextDecoration decor: currentDecorations) {
+                switch (decor) {
+                    case UNDERLINE:
+                        float underlineY = currentY - .2f * currentLeading;
+                        drawLine(textStart, underlineY, textEnd, underlineY);
+                        break;
+                    case DOUBLE_OVERLINE:
+                        float overlineOne = currentY + 1f * currentFontSize;
+                        float overlineTwo = currentY + 1.2f * currentFontSize;
+                        drawLine(textStart, overlineOne, textEnd, overlineOne);
+                        drawLine(textStart, overlineTwo, textEnd, overlineTwo);
+                        break;
+                }
+            }
+            beginText();
+        }
+    }
+
+    private void drawLine(float startX, float startY, float endX, float endY) throws IOException {
+        content.moveTo(startX, startY);
+        content.lineTo(endX, endY);
+        content.stroke();
+    }
+
+    private void newLine() throws IOException {
+        move(MARGIN_X - currentX, -currentLeading);
     }
 
     public void addParagraph(String text) throws IOException {
-        addParagraph(text, false);
-    }
-
-    public void addParagraph(String text, boolean justify) throws IOException {
         List<String> lines = parseLines(text, pageWidth);
         for (String line: lines) {
             float charSpacing = 0;
-            if (justify){
+            if (currentAlignment == Alignment.JUSTIFIED){
                 if (line.length() > 1) {
                     float size = calculateWidth(line);
                     float free = pageWidth - size;
@@ -103,8 +152,8 @@ public class PdfWriter implements Closeable {
                 }
             }
             content.setCharacterSpacing(charSpacing);
-            content.showText(line);
-            content.newLine();
+
+            addLine(line);
         }
         addBlankLine();
     }
@@ -114,48 +163,41 @@ public class PdfWriter implements Closeable {
     }
 
     public void addBlankSpace(float lines) throws IOException {
-        content.newLineAtOffset(0.0f, -lines*currentLeading);
+        moveDown(-lines*currentLeading);
     }
 
-    public void startTable(int[] columnWidths, boolean[] alignments) {
-        tableColumnWidths = columnWidths;
-        tableAlignments = alignments;
+    public void startTable(int[] columnWidths, Alignment[] alignments) {
+        this.columnWidths = columnWidths;
+        columnAlignments = alignments;
     }
 
     public void addTableHeader(String... values) throws IOException {
-        if(tableColumnWidths.length < tableAlignments.length || tableAlignments.length != values.length)
+        if(columnWidths.length < columnAlignments.length || columnAlignments.length != values.length)
             throw new IllegalArgumentException("Table not configured correctly for input columns.");
 
-        int totalWidth = 0;
+        addDecoration(TextDecoration.UNDERLINE);
         for(int i = 0; i<values.length; i++) {
-            addTableCell(tableColumnWidths[i], tableAlignments[i], values[i]);
-            content.newLineAtOffset(tableColumnWidths[i] + 5, 0);
-            totalWidth += tableColumnWidths[i] + 5;
+            addTableCell(values[i], columnWidths[i], columnAlignments[i]);
+            moveRight(10); //boundary spacing
         }
+        removeDecoration(TextDecoration.UNDERLINE);
 
-        content.newLineAtOffset(-totalWidth, -currentLeading);
-//        content.endText();
-//        content.moveTo(-totalWidth, -1.15f*currentFontSize);
-//        content.lineTo(totalWidth, 0);
-//        content.moveTo(-totalWidth, -.1f*currentFontSize);
-//        content.beginText();
+        newLine();
     }
 
     public void addTableRow(String... values) throws IOException {
-        addTableRow(tableColumnWidths, values);
+        addTableRow(columnWidths, values);
     }
 
     public void addTableRow(int[] tableColumnWidths, String... values) throws IOException {
-        if(tableColumnWidths.length < tableAlignments.length || tableAlignments.length != values.length)
+        if(tableColumnWidths.length < columnAlignments.length || columnAlignments.length != values.length)
             throw new IllegalArgumentException("Table not configured correctly for input columns.");
 
-        int totalWidth = 0;
         for(int i = 0; i<values.length; i++) {
-            addTableCell(tableColumnWidths[i], tableAlignments[i], values[i]);
-            content.newLineAtOffset(tableColumnWidths[i] + 5, 0);
-            totalWidth += tableColumnWidths[i] + 5;
+            addTableCell(values[i], tableColumnWidths[i], columnAlignments[i]);
+            moveRight(10); //cell border spacing
         }
-        content.newLineAtOffset(-totalWidth, -currentLeading);
+        newLine();
     }
 
     @Override
@@ -168,13 +210,13 @@ public class PdfWriter implements Closeable {
         document.save(stream);
     }
 
+    // ----- Private -----
     private void closeContent() throws IOException {
         if (this.content != null)
             this.content.close();
         this.content = null;
     }
 
-    // ----- Private -----
     private List<String> parseLines(String text, float width) throws IOException {
         List<String> lines = new ArrayList<>();
         int lastSpace = -1;
@@ -183,7 +225,7 @@ public class PdfWriter implements Closeable {
             if (spaceIndex < 0)
                 spaceIndex = text.length();
             String subString = text.substring(0, spaceIndex);
-            float size = currentFontSize * FONT.getStringWidth(subString) / 1000;
+            float size = calculateWidth(subString);
             if (size > width) {
                 if (lastSpace < 0){
                     lastSpace = spaceIndex;
@@ -206,18 +248,68 @@ public class PdfWriter implements Closeable {
         return FONT.getStringWidth(line) / 1000 * currentFontSize;
     }
 
-    private void addTableCell(float width, boolean alignLeft, String text) throws IOException {
-        List<String> lines = parseLines(text, width);
-        int linesWritten = 0;
-        for (String line: lines) {
-            if(linesWritten++ > 0)
-                content.newLine();
+    private void addTableCell(String text, float width, Alignment alignment) throws IOException {
+        if(text.isEmpty())
+            moveRight(width);
 
-            float whitespace = width - calculateWidth(line);
-            if(!alignLeft) content.newLineAtOffset(whitespace, 0);
-            content.showText(line);
-            if(!alignLeft) content.newLineAtOffset(-whitespace, 0);
+        List<String> lines = parseLines(text, width);
+        float startX = currentX;
+        boolean first = true;
+        for (String line: lines) {
+            if(first)
+                first = false;
+            else
+                move(startX - currentX, -currentLeading);
+
+            addText(line, width, alignment);
         }
     }
 
+    private void alignText(String text, float width) throws IOException {
+        alignText(text, width, currentAlignment);
+    }
+
+    private void alignText(String text, float width, Alignment alignment) throws IOException {
+        switch (alignment) {
+            case CENTER:
+                moveRight((width - calculateWidth(text)) / 2);
+                return;
+            case RIGHT:
+                moveRight(width - calculateWidth(text));
+                return;
+            default:
+        }
+    }
+
+    // Cursor Movement
+    private void moveRight(float deltaX) throws IOException {
+        currentX += deltaX;
+        if(currentX > (pageWidth + MARGIN_X))
+            LOG.warn("Writing text beyond page width boundary");
+
+        content.newLineAtOffset(deltaX, 0);
+    }
+
+    private void moveDown(float deltaY) throws IOException {
+        currentY += deltaY;
+        if(currentY < MARGIN_Y) {
+            endText();
+            newPage();
+            beginText();
+        } else {
+            content.newLineAtOffset(0, deltaY);
+        }
+    }
+
+    private void move(float deltaX, float deltaY) throws IOException {
+        currentX += deltaX;
+        currentY += deltaY;
+        if(currentY < MARGIN_Y) {
+            endText();
+            newPage();
+            beginText();
+        } else {
+            content.newLineAtOffset(deltaX, deltaY);
+        }
+    }
 }
