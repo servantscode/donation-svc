@@ -17,8 +17,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 import static java.lang.String.format;
 
@@ -110,6 +109,23 @@ public class DonationDB extends EasyDB<Donation> {
         return get(query);
     }
 
+    public List<Integer> getDonationYears(int familyId) {
+        QueryBuilder query = select("DISTINCT EXTRACT('year' FROM date)").with("d.family_id", familyId).inOrg("d.org_id");
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = query.prepareStatement(conn);
+             ResultSet rs = stmt.executeQuery()){
+
+            ArrayList<Integer> years = new ArrayList<>(10);
+            while(rs.next())
+                years.add(rs.getInt(1));
+
+            years.sort(Comparator.comparingInt(a -> -a));
+            return years;
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not get list of years with available donation data.", e);
+        }
+    }
+
     public Donation getLastDonation(int familyId, int fundId) {
         QueryBuilder query = select(all()).with("d.family_id", familyId).with("fund_id", fundId)
                 .sort("date DESC, recorded_time DESC").limit(1);
@@ -196,4 +212,5 @@ public class DonationDB extends EasyDB<Donation> {
         donation.setRecorderName(rs.getString("recorder_name"));
         return donation;
     }
+
 }

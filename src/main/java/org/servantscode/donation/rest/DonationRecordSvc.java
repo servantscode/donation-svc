@@ -1,24 +1,30 @@
 package org.servantscode.donation.rest;
 
+import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.client.ApiClientFactory;
 import org.servantscode.client.FamilyServiceClient;
 import org.servantscode.client.ParishServiceClient;
+import org.servantscode.client.PersonServiceClient;
 import org.servantscode.commons.rest.SCServiceBase;
 import org.servantscode.commons.security.OrganizationContext;
 import org.servantscode.donation.Donation;
+import org.servantscode.donation.EmailDonationLetterClient;
 import org.servantscode.donation.PdfWriter;
 import org.servantscode.donation.db.DonationDB;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -62,25 +68,56 @@ public class DonationRecordSvc extends SCServiceBase {
         }
     }
 
-//    @POST @Path("/{familyId}/annual/{year}/email")
-//    public void emailAnnualReport(@PathParam("familyId") int familyId, @PathParam("year") int year) {
-//
-//        verifyUserAccess("donation.read");
-//        verifyUserAccess("email.send");
-//        try {
-//            List<Donation> d = db.getAnnualDonations(familyId, year);
-//
-//            ApiClientFactory.instance().authenticateAsSystem();
-//            Map<String, Object> family = new FamilyServiceClient().getFamily(familyId);
-//            Map<String, Object> parish = new ParishServiceClient().getParishForOrg(OrganizationContext.orgId());
-//
-//            //TODO: Send email
-//            createDonationReport(d, family, parish, output);
-//        } catch(Throwable t) {
-//            LOG.error("Retrieving annual report failed:", t);
-//            throw t;
-//        }
-//    }
+    @GET @Path("/{familyId}/annual/years") @Produces(APPLICATION_JSON)
+    public List<Integer> availableReports(@PathParam("familyId") int familyId) {
+        verifyUserAccess("donation.read");
+
+        try {
+            return db.getDonationYears(familyId);
+        } catch(Throwable t) {
+            LOG.error("Could not find donation years for family: " + familyId, t);
+            throw t;
+        }
+    }
+
+    @POST @Path("/{familyId}/annual/{year}/email")
+    public void emailAnnualReport(@PathParam("familyId") int familyId, @PathParam("year") int year) {
+
+        verifyUserAccess("donation.read");
+        verifyUserAccess("email.send");
+        try {
+            List<Donation> d = db.getAnnualDonations(familyId, year);
+
+            ApiClientFactory.instance().authenticateAsSystem();
+            Map<String, Object> family = new FamilyServiceClient().getFamily(familyId);
+            Map<String, Object> parish = new ParishServiceClient().getParishForOrg(OrganizationContext.orgId());
+
+            List<Map<String, Object>> familyMembers = (List<Map<String, Object>>) family.get("members");
+            int headId=0;
+            if(familyMembers != null) {
+                 Optional<Map<String, Object>> head = familyMembers.stream().filter(fm -> (boolean) fm.get("headOfHousehold")).findFirst();
+                 if(!head.isPresent())
+                     throw new RuntimeException("Could not get family head record");
+
+                 headId = (int)head.get().get("id");
+            }
+
+            Map<String, Object> head = new PersonServiceClient().getPersonById(headId);
+
+            String email = head != null && head.containsKey("email")? (String)head.get("email"): null;
+
+            if(isEmpty(email))
+                throw new RuntimeException("Could not get family head email address.");
+
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            createDonationReport(d, family, parish, output);
+            new EmailDonationLetterClient().sendDonationReportEmail(email, Base64.encodeBase64String(output.toByteArray()), "donation-report.pdf");
+
+        } catch(Throwable t) {
+            LOG.error("Emailing annual report failed:", t);
+            throw new RuntimeException("Failed to email annual donation report to: " + familyId, t);
+        }
+    }
 
     private void createDonationReport(List<Donation> donations, Map<String, Object> family, Map<String, Object> parish, OutputStream output) throws IOException {
         try (PdfWriter writer = new PdfWriter()) {
@@ -94,9 +131,16 @@ public class DonationRecordSvc extends SCServiceBase {
             String parishName = (String) parish.get("name");
             writer.addLine(parishName);
             Map<String, Object> addr = (Map<String, Object>) parish.get("address");
-            writer.addLine(addr.get("street1").toString());
-            writer.addLine(String.format("%s, %s %s", addr.get("city"), addr.get("state"), addr.get("zip")));
-            writer.addLine(parish.get("phoneNumber").toString());
+            if(addr != null && addr.get("street1") != null) {
+                writer.addLine(addr.get("street1").toString());
+                writer.addLine(String.format("%s, %s %s", addr.get("city"), addr.get("state"), addr.get("zip")));
+            }
+            if(parish.get("phoneNumber") != null)
+                writer.addLine(parish.get("phoneNumber").toString());
+
+            writer.setFontSize(12);
+            writer.addLine(LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM dd, yyyy")));
+            writer.addBlankLine();
 
             writer.setFontSize(12);
             writer.setAlignment(LEFT);
