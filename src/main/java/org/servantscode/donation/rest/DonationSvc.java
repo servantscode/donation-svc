@@ -72,15 +72,14 @@ public class DonationSvc extends SCServiceBase {
 
     @GET @Path("/report") @Produces(MediaType.TEXT_PLAIN)
     public Response getDonationReport(@QueryParam("search") @DefaultValue("") String search) {
-
         verifyUserAccess("donation.export");
 
         try {
-            LOG.trace(String.format("Retrieving donation report(%s)", search));
+            LOG.debug(String.format("Retrieving donation report(%s)", search));
 
             return Response.ok(donationDB.getReportReader(search, EXPORTABLE_FIELDS)).build();
         } catch (Throwable t) {
-            LOG.error("Retrieving people report failed:", t);
+            LOG.error("Retrieving donation report failed:", t);
             throw t;
         }
     }
@@ -172,8 +171,12 @@ public class DonationSvc extends SCServiceBase {
     }
 
     @POST @Path("/batch") @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
-    public List<Donation> createDonations(List<Donation> donations) {
+    public List<Donation> createDonations(@QueryParam("skipDuplicates") @DefaultValue("false") boolean skipDuplicates,
+                                          List<Donation> donations) {
         verifyUserAccess("donation.create");
+
+
+        LOG.info(String.format("Recording %d donations.", donations.size()) + (skipDuplicates? " Skipping duplicate entries.": ""));
         try {
             List<Donation> createdDonations = new ArrayList<>(donations.size());
             DonationDB db = new DonationDB();
@@ -183,7 +186,11 @@ public class DonationSvc extends SCServiceBase {
                 if(donation.getPledgeId() <= 0)
                     linkPledge(donation);
 
-                createdDonations.add(db.createDonation(donation));
+
+                if(skipDuplicates)
+                    createdDonations.add(db.createDonationIfUnique(donation));
+                else
+                    createdDonations.add(db.createDonation(donation));
             }
             return createdDonations;
         } catch(Throwable t) {

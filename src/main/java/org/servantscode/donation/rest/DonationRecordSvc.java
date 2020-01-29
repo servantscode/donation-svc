@@ -34,7 +34,7 @@ import static org.servantscode.commons.StringUtils.isSet;
 import static org.servantscode.donation.PdfWriter.Alignment.*;
 import static org.servantscode.donation.PdfWriter.TextDecoration.DOUBLE_OVERLINE;
 
-@Path("/donation/report")
+@Path("/donation/record")
 public class DonationRecordSvc extends SCServiceBase {
     private static final Logger LOG = LogManager.getLogger(DonationRecordSvc.class);
 
@@ -152,9 +152,10 @@ public class DonationRecordSvc extends SCServiceBase {
                 writer.addLine(String.format("%s, %s %s", familyAddr.get("city"), familyAddr.get("state"), familyAddr.get("zip")));
             }
 
-            String homePhone = (String) family.get("homePhone");
-            if(isSet(homePhone))
-                writer.addLine(homePhone);
+            //St. Mary's asked to take this out 1/29/20
+//            String homePhone = (String) family.get("homePhone");
+//            if(isSet(homePhone))
+//                writer.addLine(homePhone);
 
             writer.addBlankLine();
             writer.addParagraph(String.format("%s,", family.get("formalGreeting")));

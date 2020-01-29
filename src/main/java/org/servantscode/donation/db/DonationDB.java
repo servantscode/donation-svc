@@ -1,5 +1,7 @@
 package org.servantscode.donation.db;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.db.DBAccess;
 import org.servantscode.commons.db.EasyDB;
 import org.servantscode.commons.db.ReportStreamingOutput;
@@ -17,11 +19,16 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
 
-import static java.lang.String.format;
+import static org.servantscode.commons.StringUtils.isSet;
+
 
 public class DonationDB extends EasyDB<Donation> {
+    private static final Logger LOG = LogManager.getLogger(DonationDB.class);
 
     private static final HashMap<String, String> FIELD_MAP = new HashMap<>(8);
 
@@ -167,6 +174,31 @@ public class DonationDB extends EasyDB<Donation> {
                 .value("org_id", OrganizationContext.orgId());
         donation.setId(createAndReturnKey(cmd));
         return donation;
+    }
+
+    public Donation createDonationIfUnique(Donation donation) {
+        QueryBuilder query = select(all())
+                .with("d.family_id", donation.getFamilyId())
+                .with("d.fund_id", donation.getFundId())
+                .with("amount", donation.getAmount())
+                .with("deductible_amount", donation.getDeductibleAmount())
+                .with("date", convert(donation.getDonationDate()))
+                .with("type", stringify(donation.getDonationType()));
+
+        if(isSet(donation.getTransactionId()))
+            query.with("transaction_id", donation.getTransactionId());
+
+        if(donation.getBatchNumber() > 0)
+                query.with("batch_number", donation.getBatchNumber());
+        if(donation.getCheckNumber() > 0)
+                query.with("check_number", donation.getCheckNumber());
+
+//        LOG.debug("Looking up donation with sql: " + query.getSql());
+
+        Donation dbDonation = getOne(query);
+        if(dbDonation != null)
+            LOG.debug("Found existing matching donation.");
+        return dbDonation != null? dbDonation: createDonation(donation);
     }
 
     public boolean updateDonation(Donation donation) {

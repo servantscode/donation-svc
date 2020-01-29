@@ -51,7 +51,7 @@ public class PledgeSvc extends SCServiceBase {
 
 
     @GET @Path("/report") @Produces(MediaType.TEXT_PLAIN)
-    public Response getDonationReport(@QueryParam("search") @DefaultValue("") String search) {
+    public Response getPledgeReport(@QueryParam("search") @DefaultValue("") String search) {
 
         verifyUserAccess("pledge.export");
 
