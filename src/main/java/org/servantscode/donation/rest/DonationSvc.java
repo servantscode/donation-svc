@@ -239,7 +239,7 @@ public class DonationSvc extends SCServiceBase {
 
     // ----- Private ----
     private void linkPledge(Donation donation) {
-        Pledge linkedPledge = pledgeDB.getActivePledge(donation.getFamilyId(), donation.getFundId());
+        Pledge linkedPledge = pledgeDB.getRelaventPledge(donation.getFamilyId(), donation.getFundId(), donation.getDonationDate());
         if (linkedPledge != null)
             donation.setPledgeId(linkedPledge.getId());
     }

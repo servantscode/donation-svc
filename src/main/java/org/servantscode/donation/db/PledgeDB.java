@@ -19,6 +19,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -72,7 +73,7 @@ public class PledgeDB extends EasyDB<Pledge> {
                       .from("pledges p")
                       .leftJoin("funds f ON f.id=p.fund_id")
                       .leftJoin("families fam ON fam.id=p.family_id")
-                      .leftJoinLateral(select("pledge_id", "SUM(amount) AS total_donations").from("donations").inOrg()
+                      .leftJoinLateral(select("pledge_id", "SUM(amount) AS total_donations").from("donations")
                                       .groupBy("pledge_id"),
                               "d", "pledge_id=p.id")
 //                      .leftJoinLateral(select("family_id", "fund_id", "SUM(amount) AS total_donations").from("donations")
@@ -99,6 +100,12 @@ public class PledgeDB extends EasyDB<Pledge> {
     public Pledge getActivePledge(int familyId, int fundId) {
         QueryBuilder query = select(selectAll()).with("family_id", familyId).with("fund_id", fundId)
                 .where("pledge_start <= NOW() AND pledge_end >= NOW()");
+        return getOne(query);
+    }
+
+    public Pledge getRelaventPledge(int familyId, int fundId, LocalDate donationDate) {
+        QueryBuilder query = select(selectAll()).with("family_id", familyId).with("fund_id", fundId)
+                .where("pledge_start <= ? AND pledge_end >= ?", donationDate, donationDate);
         return getOne(query);
     }
 
