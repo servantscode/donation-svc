@@ -7,11 +7,11 @@ import org.servantscode.client.ApiClientFactory;
 import org.servantscode.client.FamilyServiceClient;
 import org.servantscode.client.ParishServiceClient;
 import org.servantscode.client.PersonServiceClient;
+import org.servantscode.commons.pdf.PdfWriter;
 import org.servantscode.commons.rest.SCServiceBase;
 import org.servantscode.commons.security.OrganizationContext;
 import org.servantscode.donation.Donation;
 import org.servantscode.donation.EmailDonationLetterClient;
-import org.servantscode.donation.PdfWriter;
 import org.servantscode.donation.db.DonationDB;
 
 import javax.ws.rs.*;
@@ -30,9 +30,8 @@ import java.util.stream.Collectors;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.servantscode.commons.StringUtils.isEmpty;
-import static org.servantscode.commons.StringUtils.isSet;
-import static org.servantscode.donation.PdfWriter.Alignment.*;
-import static org.servantscode.donation.PdfWriter.TextDecoration.DOUBLE_OVERLINE;
+import static org.servantscode.commons.pdf.PdfWriter.Alignment.*;
+import static org.servantscode.commons.pdf.PdfWriter.TextDecoration.DOUBLE_OVERLINE;
 
 @Path("/donation/record")
 public class DonationRecordSvc extends SCServiceBase {
