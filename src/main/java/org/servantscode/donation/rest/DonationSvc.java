@@ -6,20 +6,22 @@ import org.servantscode.commons.EnumUtils;
 import org.servantscode.commons.rest.PaginatedResponse;
 import org.servantscode.commons.rest.SCServiceBase;
 import org.servantscode.donation.*;
-import org.servantscode.donation.db.DonationDB;
-import org.servantscode.donation.db.FamilyGivingInfoDB;
-import org.servantscode.donation.db.FundDB;
-import org.servantscode.donation.db.PledgeDB;
+import org.servantscode.donation.db.*;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static java.util.Arrays.asList;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static org.apache.logging.log4j.core.util.Assert.isEmpty;
+import static org.servantscode.commons.StringUtils.isSet;
 
 @Path("/donation")
 public class DonationSvc extends SCServiceBase {
@@ -28,22 +30,82 @@ public class DonationSvc extends SCServiceBase {
     private final DonationDB donationDB;
     private final PledgeDB pledgeDB;
     private final FamilyGivingInfoDB familyDB;
+    private final FamilyContributionDB contributionDb;
     private final FundDB fundDB;
 
-    private static final List<String> EXPORTABLE_FIELDS = Arrays.asList("id", "family_name", "fund_name", "amount", "type", "date", "check_number", "transaction_id");
+    private static final List<String> EXPORTABLE_FIELDS = asList("id", "family_name", "fund_name", "amount", "type", "date", "check_number", "transaction_id");
+    private static final List<String> CONTRIBUTION_FIELDS = asList("id", "surname", "head_name", "spouse_name", "addr_street1", "addr_city", "addr_state", "addr_zip", "donation_count", "total_amount");
 
     public DonationSvc() {
         this.donationDB = new DonationDB();
         this.pledgeDB = new PledgeDB();
         this.familyDB = new FamilyGivingInfoDB();
         this.fundDB = new FundDB();
+        this.contributionDb = new FamilyContributionDB();
+    }
+
+    @GET @Path("/family") @Produces(APPLICATION_JSON)
+    public PaginatedResponse<FamilyContributions> getFamilyContributions(@QueryParam("dateStart") String startDateStr,
+                                                                         @QueryParam("dateEnd") String endDateStr,
+                                                                         @QueryParam("start") @DefaultValue("0") int start,
+                                                                         @QueryParam("count") @DefaultValue("10") int count,
+                                                                         @QueryParam("sort") @DefaultValue("surname") String sortField,
+                                                                         @QueryParam("search") @DefaultValue("") String search) {
+
+        verifyUserAccess("donation.list");
+
+        LocalDate startDate;
+        LocalDate endDate;
+        try {
+            //Default to Year to Date
+            startDate = isSet(startDateStr) ? LocalDate.parse(startDateStr): LocalDate.now().withDayOfYear(1);
+            endDate = isSet(endDateStr) ? LocalDate.parse(endDateStr): LocalDate.now();
+        } catch (DateTimeParseException e) {
+            throw new BadRequestException("Bad date format.");
+        }
+
+        try {
+            int totalDonations = contributionDb.getFamilyTotalDonationCount(startDate, endDate, search);
+
+            List<FamilyContributions> donations = contributionDb.getFamilyTotalDonations(startDate, endDate, start, count, sortField, search);
+            return new PaginatedResponse<>(start, donations.size(), totalDonations, donations);
+        } catch(Throwable t) {
+            LOG.error("Failed to retrieve family total donations.", t);
+            throw t;
+        }
+    }
+
+    @GET @Path("/family/report") @Produces(MediaType.TEXT_PLAIN)
+    public Response getContributionReport(@QueryParam("dateStart") String startDateStr,
+                                          @QueryParam("dateEnd") String endDateStr,
+                                          @QueryParam("search") @DefaultValue("") String search) {
+        verifyUserAccess("donation.export");
+
+        LocalDate startDate;
+        LocalDate endDate;
+        try {
+            //Default to Year to Date
+            startDate = isSet(startDateStr) ? LocalDate.parse(startDateStr): LocalDate.now().withDayOfYear(1);
+            endDate = isSet(endDateStr) ? LocalDate.parse(endDateStr): LocalDate.now();
+        } catch (DateTimeParseException e) {
+            throw new BadRequestException("Bad date format.");
+        }
+
+        try {
+            LOG.debug(String.format("Retrieving contribution report(%s)", search));
+
+            return Response.ok(contributionDb.getReportReader(startDate, endDate, search, CONTRIBUTION_FIELDS)).build();
+        } catch (Throwable t) {
+            LOG.error("Retrieving contribution report failed:", t);
+            throw t;
+        }
     }
 
     @GET @Path("/family/{familyId}") @Produces(APPLICATION_JSON)
     public PaginatedResponse<Donation> getFamilyDonations(@PathParam("familyId") int familyId,
                                                     @QueryParam("start") @DefaultValue("0") int start,
                                                     @QueryParam("count") @DefaultValue("10") int count,
-                                                    @QueryParam("sort_field") @DefaultValue("date DESC, recorded_time DESC") String sortField,
+                                                    @QueryParam("sort") @DefaultValue("date DESC, recorded_time DESC") String sortField,
                                                     @QueryParam("search") @DefaultValue("") String search) {
 
         verifyUserAccess("donation.list");
@@ -88,7 +150,7 @@ public class DonationSvc extends SCServiceBase {
     @GET @Produces(APPLICATION_JSON)
     public PaginatedResponse<Donation> getDonations(@QueryParam("start") @DefaultValue("0") int start,
                                                     @QueryParam("count") @DefaultValue("10") int count,
-                                                    @QueryParam("sort_field") @DefaultValue("date DESC, recorded_time DESC") String sortField,
+                                                    @QueryParam("sort") @DefaultValue("date DESC, recorded_time DESC") String sortField,
                                                     @QueryParam("search") @DefaultValue("") String search) {
 
         verifyUserAccess("donation.list");
