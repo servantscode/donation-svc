@@ -33,7 +33,7 @@ public class DonationSvc extends SCServiceBase {
     private final FamilyContributionDB contributionDb;
     private final FundDB fundDB;
 
-    private static final List<String> EXPORTABLE_FIELDS = asList("id", "family_name", "fund_name", "amount", "type", "date", "check_number", "transaction_id");
+    private static final List<String> EXPORTABLE_FIELDS = asList("id", "family_id", "family_name", "fund_name", "amount", "type", "date", "check_number", "transaction_id");
     private static final List<String> CONTRIBUTION_FIELDS = asList("id", "surname", "head_name", "spouse_name", "addr_street1", "addr_city", "addr_state", "addr_zip", "donation_count", "total_amount");
 
     public DonationSvc() {

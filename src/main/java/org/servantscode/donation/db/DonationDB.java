@@ -19,10 +19,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.*;
 
 import static org.servantscode.commons.StringUtils.isSet;
 
@@ -114,6 +114,26 @@ public class DonationDB extends EasyDB<Donation> {
                 .search(searchParser.parse(search))
                 .page(sortField, start, count);
         return get(query);
+    }
+
+    public List<Integer> getContributingFamilies(int year) {
+        LocalDate startDate = LocalDate.of(year, 1,1);
+        LocalDate endDate = LocalDate.of(year, 12,31);
+        QueryBuilder query = DBAccess.select("DISTINCT family_id").from("donations")
+                .where("date >= ?", startDate).where("date <= ?", endDate).inOrg();
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = query.prepareStatement(conn);
+             ResultSet rs = stmt.executeQuery()) {
+
+            List<Integer> families = new LinkedList<>();
+            while(rs.next())
+                families.add(rs.getInt(1));
+
+            return families;
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not get list of families with available donation data.", e);
+        }
     }
 
     public List<Integer> getDonationYears(int familyId) {
@@ -244,5 +264,4 @@ public class DonationDB extends EasyDB<Donation> {
         donation.setRecorderName(rs.getString("recorder_name"));
         return donation;
     }
-
 }
